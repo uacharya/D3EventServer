@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="Identity" content="oneTwo">
+    <title>Stacked-to-Grouped Bars</title>
+    <style>
+    body{
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        margin: auto;
+        position: absolute;
+        overflow: hidden;
+
+    }
+
+    text{
+        font: 30px sans-serif;
+        font-weight:bold;
+    }
+
+    .displayData{
+        font: 20px sans-serif;
+    }
+    .xAxis path,
+    .xAxis line{
+        fill:none;
+        stroke: orange;
+        shape-rendering: crispEdges;
+    }
+
+    .yAxis path,
+    .yAxis line{
+        fill:none;
+        stroke: orange;
+        stroke-width:5px;
+        shape-rendering: crispEdges;
+    }
+
+    form{
+        position: absolute;
+        right:0px;
+        left:1800px;
+        width: 2000px;
+    }
+
+    #buttons{
+        visibility: hidden;
+    }
+
+   
+
+    label{
+        font: 40px sans-serif;
+    }
+
+    </style>
+    <script type="text/javascript">
+
+    var groupedMode, stackedMode;
+
+    var webSocket = new WebSocket("ws://192.168.10.4:8080/D3/bilevelserver");
+
+    webSocket.onmessage = function(dimension){
+        if(dimension.data!="grouped"&&dimension.data!="stacked"){
+            var obj = {Title:document.title,url:dimension.data};
+            window.history.replaceState(obj,obj.Title,obj.url);
+
+            var params = dimension.data.split("&");
+
+            for(var i=0;i<params.length;i++){
+                var check = params[i].split("=");
+                if(decodeURIComponent(check[0])=='x'){
+                    var browser = decodeURIComponent(check[1]);
+                    if(browser==0){
+                        document.title = '1';
+                        break;
+                    }else if(browser==3840){
+                        document.title = '2';
+                        break;
+                    }else{
+                        document.title = '3';
+                        break;
+                    }
+                }
+            }
+        }else if(dimension.data === "grouped"){
+            groupedMode();
+        }else if(dimension.data === "stacked"){
+            stackedMode();
+        }
+    }
+
+
+    var sendEvent = function(value){
+        webSocket.send(value);
+    }    
+
+    webSocket.onerror = function(value){
+        alert("error happend for value "+ value);
+    }
+
+
+    </script>
+</head>
+<body>
+    <div id="buttons">
+        <form>
+            <label><input type="radio" name="mode" value="grouped" >Grouped</label>
+            <label><input type="radio" name="mode" value="stacked" checked>Stacked</label>
+        </form>
+    </div>
+    <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
+    <script>
+    //setting time delay so that the svg gets viewBox parameters from the url before loading the entire body
+    setTimeout(function(){
+        d3.csv("dataSetForBarChart.csv",function(data){
+            var dataSet = data;
+
+            var getViewBoxValues= function(){
+        //getting parameters from the url passed
+        var params = window.location.search.substring(1).split("&");
+        var getURLParam = function(variable){
+            //iterate through all values to get the required output
+            for(var i=0;i<params.length;i++){
+                var check = params[i].split("=");
+                if(decodeURIComponent(check[0])===variable){
+                    return decodeURIComponent(check[1]);
+                }
+            }
+        }
+
+        var result = [];
+
+        result.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
+
+        if(result[0]==3840 && result[1]==0){
+            document.getElementById("buttons").style.visibility='visible';
+        }
+
+        return result.join(" ");
+
+    }
+
+
+    var i = 0;
+    var n = 6, //layers
+            m = 200, //sample size
+            stack = d3.layout.stack(),
+            layers = stack(d3.range(n).map(function () {
+                i++;
+                return bumpLayer(m, i);
+            })),
+            yGroupMax = d3.max(layers, function (layer) {
+                return d3.max(layer, function (d) {
+                    return d.y;
+                })
+            }),
+            yStackMax = d3.max(layers, function (layer) {
+                return d3.max(layer, function (d) {
+                    return d.y0 + d.y;
+                })
+            });
+
+            var margin = {top: 50, right: 10, left: 180, bottom: 100},
+            height = 6480 - margin.top - margin.bottom,
+            width =  11520- margin.left - margin.right;
+
+            var x = d3.scale.ordinal().domain(d3.range(m)).rangeRoundBands([0, width],.08);
+
+            var y = d3.scale.linear().domain([0, yStackMax]).range([height, 0]);
+
+            var color = d3.scale.linear().domain([0,1,2,3,4,5]).range(["red","blue","green","orange","purple","black"]);
+
+            var xAxis = d3.svg.axis().scale(x).tickSize(2).tickPadding(6).orient("bottom");
+
+            var yAxis = d3.svg.axis().scale(y).tickSize(10).tickPadding(6).orient("left");
+
+            var finalYPoint = d3.svg.axis().scale(y).tickSize(0).tickValues([yStackMax]).orient("left");
+
+
+            var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .attr("viewBox",getViewBoxValues())
+            .attr("preserveAspectRatio","xMinYMin meet")
+            .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var layer = svg.selectAll(".layer").data(layers).enter().append("g").attr("class", "layer").style("fill", function (d, i) {
+                return color(i);
+            });
+
+            var rect = layer.selectAll("rect").data(function (d) {
+                return d
+            }).enter().append("rect").attr("x", function (d) {
+                return x(d.x);
+            })
+            .attr("y",height).attr("width", x.rangeBand()).attr("height",0);
+
+            rect.transition().delay(function (d, i) {
+                return i * 10;
+            }).attr("y", function (d) {
+                return y(d.y0 + d.y);
+            })
+            .attr("height", function (d) {
+                return y(d.y0) - y(d.y0 + d.y);
+            });
+
+            var displayData = layer.selectAll("text").data(function(d)
+                { return d; }).enter().append("text").attr("class","displayData");
+
+            displayData.transition().delay(function(d){return i*300;}).attr("x", function (d) {
+                return x(d.x)+10;
+            }).attr("y", function (d,i,j) {
+                if(j==n-1){
+                    return y(d.y0 + d.y)-5;
+                }
+            }).text(function(d,i,j){
+                if(j==n-1){
+                    return d.y0+d.y;
+                }
+            });
+
+            svg.append("g").attr("class", "xAxis").attr("transform", "translate(0," + height + ")").call(xAxis);
+
+            svg.append("g").attr("class","yAxis").attr("transform","translate(0,0)").call(yAxis).append("g").attr("class","def")
+            .attr("transform","translate(-100,"+height/2+")rotate(-90)").attr("border",5).append("text").style("font-size","40px").style("font-weight","bold").text("% Percentage of Data");
+
+            svg.append("g").attr("class","yFinal").attr("transform","translate(0,0)").call(finalYPoint);
+
+            d3.selectAll("input").style("height","30px").style("width","30px").on("change", change);
+
+
+            function change() {
+                sendEvent(this.value);
+            }
+
+
+            groupedMode = function() {
+                y.domain([0, yGroupMax]).range([height,0.4 *height]);
+                var newYAxis = yAxis.scale(y);
+                var newFinalY = finalYPoint.scale(y).tickValues([yGroupMax]);
+
+                svg.select(".yAxis").transition().duration(500).call(newYAxis);
+                svg.select(".yFinal").transition().duration(500).call(newFinalY);
+        //xAxis.scale().domain(d3.range(m)).rangeRoundBands([0,width+m*80],.08);
+
+        rect.transition().duration(500).delay(function (d, i) {
+            return i * 10
+        })
+        .attr("x", function (d, i,j) {
+                    return x(d.x) + x.rangeBand() / n * j;
+                //}).attr("width", (x.rangeBand() / n)+10).transition().attr("y", function (d) {
+                }).attr("width", x.rangeBand() / n).transition().attr("y", function (d,i,j) {
+                    return y(d.y);
+                }).attr("height", function (d) {
+                    return height - y(d.y);
+                })
+
+                displayData.transition().delay(function (d,i){
+                    return i*10;})
+                .attr("x", function (d,i,j) {
+                    return x(d.x) + x.rangeBand() / n * j;
+                }).attr("y", function (d) {
+                    return y(d.y)-5;
+                }).text(function (d){
+                    return d.y;
+                });
+
+            }
+
+
+
+            stackedMode = function() {
+
+                y.domain([0, yStackMax]).range([height,0]);
+
+                svg.select(".yAxis").transition().duration(500).call(yAxis);
+                finalYPoint.tickValues([yStackMax]);
+                svg.select(".yFinal").transition().duration(500).call(finalYPoint);
+
+
+
+
+                rect.transition().duration(500).delay(function (d, i) {
+                    return i * 10;
+                })
+                .attr("y", function (d) {
+                    return y(d.y0 + d.y);
+                }).attr("height", function (d) {
+                    return y(d.y0) - y(d.y0 + d.y);
+                }).transition().attr("x", function (d, i) {
+                    return x(d.x);
+                }).attr("width", x.rangeBand());
+
+                displayData.transition().delay(function (d,i){
+                    return i*10;
+                }).attr("x", function (d) {
+                    return x(d.x)+10;
+                }).attr("y", function (d,i,j) {
+                    if(j==n-1){
+                        return y(d.y0 + d.y)-5;
+                    }
+                }).text(function(d,i,j){
+                    if(j==n-1){
+                        return d.y0+d.y;
+                    }
+                });
+
+            }
+
+
+            function
+            bumpLayer(n, layer) {
+                var output = [];
+
+                for(var i=0;i<dataSet.length;i++){
+                    if(dataSet[i].layer == layer){
+                        output.push(+dataSet[i].data);
+                    }
+                }
+
+                return output.map(function(d,i){
+                    return {x:i,y:d};
+                });
+            }
+        });
+
+
+},700);
+
+
+
+</script>
+
+
+
+</body>
+</html>

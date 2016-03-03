@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="identity" content="oneTwo">
+<title></title>
+<style>
+body{
+    overflow: hidden;
+}
+circle,
+path {
+    cursor: pointer;
+}
+
+circle {
+    fill: none;
+    pointer-events: all;
+}
+</style>
+
+<script type="text/javascript" src="InvalidJSONProperties.js"></script>
+<script type="text/javascript" src="CircularReference.js"></script>
+<script type="text/javascript">
+var zoom;
+
+var webSocket = new WebSocket("ws://192.168.10.4:8080/D3/bilevelserver");
+
+webSocket.onmessage = function(dimension){
+    //getting the parameters from server to display part of animation
+    if(dimension.data.length<100){
+        var obj = {Title:document.title,url:dimension.data};
+        window.history.replaceState(obj,obj.Title,obj.url);
+
+        var params = dimension.data.split("&");
+
+            for(var i=0;i<params.length;i++){
+                var check = params[i].split("=");
+                if(decodeURIComponent(check[0])=='x'){
+                    var browser = decodeURIComponent(check[1]);
+                    if(browser==0){
+                        document.title = '1';
+                        break;
+                    }else if(browser==3840){
+                        document.title = '2';
+                        break;
+                    }else{
+                        document.title = '3';
+                        break;
+                    }
+                }
+            }
+        
+    }else{ //else getting the node clicked for animation
+        var response = JSON.parse(dimension.data);
+    //checking if single value was send for zooming in or multiple values for zooming out
+    if(response.length===1){
+        //retrieving original tree data for zooming
+        var parent = retrieveOriginalObject(JSON.retrocycle(response[0]),key);
+        console.log(parent);
+        zoom(parent,parent);
+    }else{
+         //retrieving original tree data for zooming
+         var parent = retrieveOriginalObject(JSON.retrocycle(response[0]),key);
+         var child = retrieveOriginalObject(JSON.retrocycle(response[1]),key);
+         zoom(parent,child);
+     }
+
+ }
+}
+
+
+var sendNodes = function(parent,child){
+
+    var request = [];
+
+    if(parent === child){
+        //remove the circular referenes present
+        var first = JSON.decycle(parent);
+        request.push(first);
+        //send as string to the web server
+        webSocket.send(JSON.stringify(request));
+    }else{
+        //remove the circular referenes present
+        var first = JSON.decycle(parent);
+        var second = JSON.decycle(child);
+        request.push(first,second);
+        //send as string to the web server
+        webSocket.send(JSON.stringify(request));
+    }
+    
+}
+
+webSocket.onerror= function(){
+    alert("an error has occured");
+}
+</script>
+<body>
+    <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
+    <script>
+
+    setTimeout(function(){
+      
+    //this function for returning viewBox dimensions
+    var getViewBoxValues= function(){
+        //getting parameters from the url passed
+        var getURLParam = function(variable){ 
+            var params = window.location.search.substring(1).split("&");
+
+            for(var i=0;i<params.length;i++){
+                var check = params[i].split("=");
+                if(decodeURIComponent(check[0])===variable){
+                    return decodeURIComponent(check[1]);
+                }
+            }
+        }
+
+         var result = [];
+
+        result.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
+
+        return result.join(" ");
+    }
+
+
+   var margin = {top: 3248, right: 5760, bottom: 3248, left: 5760},
+    radius = 3000;
+            //Math.max(margin.top, margin.right, margin.bottom, margin.left) - 10;
+
+            var hue = d3.scale.category10();
+
+            var luminance = d3.scale.sqrt()
+            .domain([0, 1e6])
+            .clamp(true)
+            .range([90, 20]);
+
+            var svg = d3.select("body").append("svg")
+            .attr("width", 11520)
+            .attr("height", 6480)
+            .attr("viewBox",getViewBoxValues()).attr("preserveAspectRatio","xMinYMin meet")
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var partition = d3.layout.partition()
+            .sort(function (a, b) {
+                return d3.ascending(a.name, b.name);
+            }).size([2*Math.PI, radius]);
+
+            var arc = d3.svg.arc()
+            .startAngle(function (d) {
+                return d.x;
+            })
+            .endAngle(function (d) {
+                return d.x + d.dx - .01 / (d.depth + .5);
+            })
+            .innerRadius(function (d) {
+                return radius / 3 * d.depth;
+            })
+            .outerRadius(function (d) {
+                return radius / 3 * (d.depth + 1) - 1;
+            });
+
+            d3.json("flare.json", function (error, root) {
+
+        // Compute the initial layout on the entire tree to sum sizes.
+        // Also compute the full name and fill color for each node,
+        // and stash the children so they can be restored as we descend.
+        partition
+        .value(function (d) {
+            return d.size;
+        })
+        .nodes(root)
+        .forEach(function (d) {
+                    d._children = d.children;
+                    d.sum = d.value;
+                    d.key = key(d);
+                    d.fill = fill(d);
+                     // storing all the invalid properties into an object to retrieve later
+                    storeInvalidProperties(d.fill,'fill');
+                });
+
+        // Now redefine the value function to use the previously-computed sum.
+        partition
+        .children(function (d, depth) {
+            return depth < 2 ? d._children : null;
+        })
+        .value(function (d) {
+            return d.sum;
+        });
+
+        var center = svg.append("circle")
+        .attr("r", radius / 3)
+        .on("click", zoomOut);
+
+
+        center.append("title").text("zoom out");
+
+        var path = svg.selectAll("path")
+        .data(partition.nodes(root).slice(1))
+        .enter().append("path")
+        .attr("d", arc)
+        .attr("id", function (d){ return d.key;})
+        .style("fill", function (d) {
+            return d.fill;
+        })
+        .each(function (d) {
+            this._current = updateArc(d);
+        })
+        .on("click", zoomIn);
+
+        var showData = svg.selectAll("text").data(partition.nodes(root).slice(1))
+        .enter().append("text").attr("font-family","sans-serif").attr("font-size","80")
+        .attr("dy","6em")
+        .attr("text-anchor","start");
+        //.attr("writing-mode","tb");
+
+        showData.append("textPath").attr("xlink:href", function (d){
+            return "#"+d.key;
+        }).text(function (d){
+            return d.key.substring(d.key.lastIndexOf(".")+1,d.key.length);
+        });
+
+        function zoomIn(p) {
+            if (p.depth > 1) p = p.parent;
+            if (!p.children) return;
+            sendNodes(p,p);
+            //zoom(p, p);
+        }
+
+        function zoomOut(p) {
+            if (!p.parent) return;
+            sendNodes(p.parent,p);
+            //zoom(p.parent, p);
+        }
+
+        // Zoom to the specified new root.
+        zoom = function(root, p) {
+            if (document.documentElement.__transition__){
+               return;
+           }
+
+            // Rescale outside angles to match the new layout.
+            var enterArc,
+            exitArc,
+            outsideAngle = d3.scale.linear().domain([0, 2 * Math.PI]);
+
+            function insideArc(d) {
+                //alert(p.key >  d.key); alert(d.name);
+                return p.key > d.key
+                ? {depth: d.depth - 1, x: 0, dx: 0} : p.key < d.key
+                ? {depth: d.depth - 1, x: 2 * Math.PI, dx: 0}
+                : {depth: 0, x: 0, dx: 2 * Math.PI};
+            }
+
+            function outsideArc(d) {
+                return {depth: d.depth + 1, x: outsideAngle(d.x), dx: outsideAngle(d.x + d.dx) - outsideAngle(d.x)};
+            }
+
+            center.datum(root);
+
+            // When zooming in, arcs enter from the outside and exit to the inside.
+            // Entering outside arcs start from the old layout.
+            if (root === p) enterArc = outsideArc, exitArc = insideArc, outsideAngle.range([p.x, p.x + p.dx]);
+
+            path = path.data(partition.nodes(root).slice(1), function (d) {
+                return d.key;
+            });
+
+            showData = showData.data(partition.nodes(root).slice(1), function (d) {
+                return d.key;
+            });
+
+            // When zooming out, arcs enter from the inside and exit to the outside.
+            // Exiting outside arcs transition to the new layout.
+            if (root !== p) enterArc = insideArc, exitArc = outsideArc, outsideAngle.range([p.x, p.x + p.dx]);
+
+            d3.transition().duration(1000).each(function () {
+                path.exit().transition()
+                .style("fill-opacity", function (d) {
+                    return d.depth === 1 + (root === p) ? 1 : 0;
+                })
+                .attrTween("d", function (d) {
+                    return arcTween.call(this, exitArc(d));
+                })
+                .remove();
+
+                showData.exit().transition().remove();
+
+                path.enter().append("path")
+                .attr("id", function (d){ return d.key;s})
+                .style("fill-opacity", function (d) {
+                    return d.depth === 2 - (root === p) ? 1 : 0;
+                })
+                .style("fill", function (d) {
+                    return d.fill;
+                })
+                .on("click", zoomIn)
+                .each(function (d) {
+                    this._current = enterArc(d);
+                });
+
+                showData.enter().append("text")
+                .attr("font-family","sans-serif")
+                .attr("font-size","80")
+                .attr("dy","4em")
+                .attr("text-anchor","start")
+                .append("textPath")
+                .attr("xlink:href", function (d){ 
+                    return "#"+d.key;
+                })
+                .text(function (d){
+                    return d.key.substring(d.key.lastIndexOf(".")+1,d.key.length);
+                });
+
+
+                path.transition()
+                .style("fill-opacity", 1)
+                .attrTween("d", function (d) {
+                    return arcTween.call(this, updateArc(d));
+                });
+            });
+}
+});
+
+function key(d) {
+    var k = [], p = d;
+    while (p.depth) k.push(p.name), p = p.parent;
+    return k.reverse().join(".");
+}
+
+function fill(d) {
+    var p = d;
+    while (p.depth > 1) p = p.parent;
+    var c = d3.lab(hue(p.name));
+    c.l = luminance(d.sum);
+    return c;
+}
+
+function arcTween(b) {
+    var i = d3.interpolate(this._current, b);
+    this._current = i(0);
+    return function (t) {
+        return arc(i(t));
+    };
+}
+
+function updateArc(d) {
+    return {depth: d.depth, x: d.x, dx: d.dx};
+}
+
+d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
+},700);
+
+
+</script>
+
+</body>
+</html>

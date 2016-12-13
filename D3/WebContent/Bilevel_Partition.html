@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <meta charset="UTF-8">
-<meta name="identity" content="oneTwo">
 <title></title>
 <style>
 body{
-    overflow: hidden;
+    overflow:hidden;
 }
-circle,
+
 path {
     cursor: pointer;
 }
@@ -23,33 +22,17 @@ circle {
 <script type="text/javascript">
 var zoom;
 
-var webSocket = new WebSocket("ws://192.168.10.4:8080/D3/bilevelserver");
+var webSocket = new WebSocket("ws://192.168.10.3:8080/D3/bilevelserver");
+
+webSocket.onopen = function(){
+    webSocket.send("dimensionFor"+window.screenX);
+}
 
 webSocket.onmessage = function(dimension){
     //getting the parameters from server to display part of animation
     if(dimension.data.length<100){
         var obj = {Title:document.title,url:dimension.data};
-        window.history.replaceState(obj,obj.Title,obj.url);
-
-        var params = dimension.data.split("&");
-
-            for(var i=0;i<params.length;i++){
-                var check = params[i].split("=");
-                if(decodeURIComponent(check[0])=='x'){
-                    var browser = decodeURIComponent(check[1]);
-                    if(browser==0){
-                        document.title = '1';
-                        break;
-                    }else if(browser==3840){
-                        document.title = '2';
-                        break;
-                    }else{
-                        document.title = '3';
-                        break;
-                    }
-                }
-            }
-        
+        window.history.replaceState(obj,obj.Title,obj.url);      
     }else{ //else getting the node clicked for animation
         var response = JSON.parse(dimension.data);
     //checking if single value was send for zooming in or multiple values for zooming out
@@ -98,10 +81,13 @@ webSocket.onerror= function(){
     <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
     <script>
 
+    var parameters,
+        clipDimensions=[];
+
     setTimeout(function(){
       
     //this function for returning viewBox dimensions
-    var getViewBoxValues= function(){
+    (function(){
         //getting parameters from the url passed
         var getURLParam = function(variable){ 
             var params = window.location.search.substring(1).split("&");
@@ -114,12 +100,10 @@ webSocket.onerror= function(){
             }
         }
 
-         var result = [];
+        clipDimensions.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
 
-        result.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
-
-        return result.join(" ");
-    }
+        parameters = clipDimensions.join(" ");
+    })();
 
 
    var margin = {top: 3248, right: 5760, bottom: 3248, left: 5760},
@@ -132,13 +116,18 @@ webSocket.onerror= function(){
             .domain([0, 1e6])
             .clamp(true)
             .range([90, 20]);
+            
+            var svg = d3.select("body").append("svg");
 
-            var svg = d3.select("body").append("svg")
-            .attr("width", 11520)
+            svg.append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
+
+            svg = svg.attr("width", 11520)
             .attr("height", 6480)
-            .attr("viewBox",getViewBoxValues()).attr("preserveAspectRatio","xMinYMin meet")
+            .attr("viewBox",parameters).attr("preserveAspectRatio","xMinYMin meet")
+            .attr("clip-path","url(#clipIt)")
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
 
             var partition = d3.layout.partition()
             .sort(function (a, b) {
@@ -348,7 +337,7 @@ function updateArc(d) {
 }
 
 d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
-},700);
+},800);
 
 
 </script>

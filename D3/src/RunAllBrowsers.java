@@ -18,7 +18,7 @@ import java.util.ArrayList;
 public class RunAllBrowsers {
 	// command line for opening browsers in each node
 	private static final String[] nodesCommand = { "c:\\psexec.exe -i \\\\wall1 -u walluser -p Spring2015! -c",
-			"c:\\psexec.exe -i \\\\wall2", "c:\\psexec.exe -i \\\\wall3 -u walluser -p Spring2015! -c" };
+			"c:\\psexec.exe -i \\\\wall2 -u walluser -p Spring2015! -c", "c:\\psexec.exe -i \\\\wall3" };
 	private static final int numberOfBrowsers = 3;
 
 	public static void main(String[] args) {
@@ -27,13 +27,22 @@ public class RunAllBrowsers {
 		for (int x = 0; x < numberOfBrowsers; x++) {
 			createBatchFile(x, args[0]);
 		}
-
+		//this is the index of node starting from 0 to 2 from the top
 		for (int i = 0; i < nodesCommand.length; i++) {
-			for (int j = 0; j < nodesCommand.length; j++) {
+			for (int j = 0; j < nodesCommand.length; j++) { //the index of monitor
+//				if(i==2){
+				//creates command to run in command line using psExec
 				String[] commandLineArgs = giveFullCommandLineArgs(j, nodesCommand[i].split(" "));
 				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, j);
 				Thread node = new Thread(execute);
 				node.start();
+//				}
+			}
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 

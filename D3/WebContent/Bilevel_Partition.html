@@ -117,14 +117,14 @@ webSocket.onerror= function(){
             .clamp(true)
             .range([90, 20]);
             
-            var svg = d3.select("body").append("svg");
+            d3.select("body").append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
 
-            svg.append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
-
-            svg = svg.attr("width", 11520)
+            var svg = d3.select("body").append("svg")
+            .attr("width", 11520)
             .attr("height", 6480)
-            .attr("viewBox",parameters).attr("preserveAspectRatio","xMinYMin meet")
             .attr("clip-path","url(#clipIt)")
+            .attr("viewBox",parameters)
+            .attr("preserveAspectRatio","xMinYMin meet")
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
@@ -337,7 +337,7 @@ function updateArc(d) {
 }
 
 d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
-},800);
+},1000);
 
 
 </script>

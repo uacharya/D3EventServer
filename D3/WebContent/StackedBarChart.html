@@ -141,14 +141,13 @@
             var yAxis = d3.svg.axis().scale(y).tickSize(10).tickPadding(6).orient("left");
             var finalYPoint = d3.svg.axis().scale(y).tickSize(0).tickValues([yStackMax]).orient("left");
 
-            var svg = d3.select("body").append("svg");
+            d3.select("body").append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
 
-            svg.append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
-
-            svg = svg.attr("width", width + margin.left + margin.right)
+            var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
-            .attr("viewBox",parameters)
             .attr("clip-path","url(#clipIt)")
+            .attr("viewBox",parameters)
             .attr("preserveAspectRatio","xMinYMin meet")
             .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 

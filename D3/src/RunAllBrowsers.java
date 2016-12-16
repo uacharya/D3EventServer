@@ -8,15 +8,14 @@ import java.util.ArrayList;
 
 /**
  * @author Ujjwal Acharya : Runs 9 browsers at once from the local host node by
- *         using command line psexec tool to perform remote desktop management
- *         on each one of the nodes in tiled display. Then uses cmdow tool
- *         present in each node to move the browsers to their respective monitor
- *         . This class creates 9 threads with 3 running in each node. The
- *         threads running in each node is responsible to open the webpage and
- *         move them in the desired monitor for that node
+ *         using command line psexec tool to perform remote service management
+ *         on each one of the nodes in tiled display. This class creates 9 threads 3 for each node which are responsible
+ *         for opening a process in each one of their respective node and monitor. The process will a chrome instance running 
+ *         the required d3 page created for that node and monitor.
+ *         
  */
 public class RunAllBrowsers {
-	// command line for opening browsers in each node
+	// command line for opening browsers in each node with required credentials
 	private static final String[] nodesCommand = { "c:\\psexec.exe -i \\\\wall1 -u walluser -p Spring2015! -c",
 			"c:\\psexec.exe -i \\\\wall2 -u walluser -p Spring2015! -c", "c:\\psexec.exe -i \\\\wall3" };
 	private static final int numberOfBrowsers = 3;
@@ -30,16 +29,14 @@ public class RunAllBrowsers {
 		//this is the index of node starting from 0 to 2 from the top
 		for (int i = 0; i < nodesCommand.length; i++) {
 			for (int j = 0; j < nodesCommand.length; j++) { //the index of monitor
-//				if(i==2){
 				//creates command to run in command line using psExec
 				String[] commandLineArgs = giveFullCommandLineArgs(j, nodesCommand[i].split(" "));
 				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, j);
 				Thread node = new Thread(execute);
 				node.start();
-//				}
 			}
 			try {
-				Thread.sleep(20);
+				Thread.sleep(40);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -52,6 +49,11 @@ public class RunAllBrowsers {
 
 	}
 
+	
+	/** This method creates batch files that will be run when a process is supposed to be started in each one of the nodes
+	 * @param index gives the monitor location 
+	 * @param filename name of the d3 page which is supposed to be opened in every browser
+	 */
 	private static void createBatchFile(int index, String filename) {
 
 		ArrayList<String> output = new ArrayList<String>();
@@ -90,6 +92,12 @@ public class RunAllBrowsers {
 
 	}
 
+	
+	/** This method creates command line syntax that will be passed to the command line interpretor when a process is supposed to be started in each one of the nodes
+	 * @param x monitor index where the process is supposed to be started
+	 * @param commandlineargs an array to store all the command line syntax's tokens
+	 * @return commandlineargs
+	 */
 	private static String[] giveFullCommandLineArgs(int x, String[] commandlineargs) {
 		String[] chromePositionArgs = new String[commandlineargs.length + 1];
 		switch (x) {

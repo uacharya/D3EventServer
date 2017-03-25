@@ -1,0 +1,385 @@
+  <!DOCTYPE html>
+  <meta charset="utf-8">
+  <style>
+  text {
+  pointer-events: none;
+  text-anchor: middle;
+  font: 12px sans-serif;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+
+  </style>
+  <body id="main">
+    <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
+    <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
+    <script>
+
+
+    var colors = ["#d73027","#f46d43","#fdae61","#fee090","#ffffbf","#e0f3f8","#abd9e9","#74add1","#4575b4"];
+
+    var interpolationWidthBound =40; //do not set both offset and width to zero else will occur endless loop
+
+    var offset = 20;
+
+    var berzierCurve = d3.line().x(function(d){return d[0] }).y(function(d){ return d[1]}); //returns the path string when passed in the value
+
+    var width = 1200,
+    height = 800,
+    maxlat = 90,
+    sExtent = [1,3],
+    initialScale = 1400;
+
+    var projection = d3.geoMercator()
+    .center([0, 35])
+    .scale(initialScale)
+    .translate([500,1050])
+    .rotate([0,0]);
+
+    var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("id","main")
+    .style("background-color","gray");
+
+    //creating a marker as arrowhead
+    // svg.append("defs").append("marker").attr("id","arrowHead").attr("refX",5).attr("refY",5).attr("markerWidth",10).attr("markerHeight",10).attr("orient","auto")
+    // .append("path").attr("d","M0,0L10,5L0,10L5,5L0,0").attr("fill","white");
+
+    var g = svg.append("g");
+
+    var path = d3.geoPath()
+    .projection(projection);
+
+  // find the top left and bottom right of current projection
+    function mercatorBounds(projection, maxlat) {
+        var yaw = projection.rotate()[0],
+            xymax = projection([-yaw+180-1e-6,-maxlat]), 
+            /* since there are 360 degrees of meridians in total adding 180 to the 
+            initial center of projection which is given by -yaw gives right most x cooridnate in the projection one can 
+            reach and since we are not rotating latitude wise so max for y coordinate is given by -max latitude based on 
+            computer coordinates system */
+            xymin = projection([-yaw-180+1e-6, maxlat]);
+            /* in this case subtracting gives the leftmost x coordinate and max latitude gives the least y coordinate */  
+        return [xymin,xymax];
+    }
+
+    //load and display the World
+    d3.json("https://gist.github.com/d3noob/5193723/raw/world-110m2.json", function(error, topology) {
+
+      g.selectAll("path")
+      .data(topojson.object(topology, topology.objects.countries)
+        .geometries)
+      .enter()
+      .append("path")
+      .attr("d", path)
+      .attr("stroke","white")
+      .attr("fill","#37722B")
+      .attr("stroke-width",1);
+
+      d3.csv("http://127.0.0.1:8000/data.csv",function(error,data){
+
+        counter = 1; //used to uniquely identify arrowhead
+        //converts the csv data into data arranged into groups based on their ID's
+
+        var data = d3.nest().key(function(d){return d.ID}).entries(data), //ID now is key
+            stationIDS = [];
+
+        //looping through the groups based on keys
+        for(var i=5;i<6;i++){
+
+          var wind_flow_data = data[i]["values"], //values of the wind flow
+              station_id = data[i]["key"];//value of the key for that station to station wind flow
+
+          stationIDS.push(station_id); //adding stations id so that they can be used later on for interaction and animation
+    
+          var stations=[];
+          //putting the source station and destination statino data to show them as circles
+          stations.push({name:wind_flow_data[0]["Source"],lat:+wind_flow_data[0]["S_Lat"],lon:+wind_flow_data[0]["S_Lon"]});
+          stations.push({name:wind_flow_data[0]["Destination"],lat:+wind_flow_data[0]["D_Lat"],lon:+wind_flow_data[0]["D_Lon"]})
+
+          //this creates an stations circle based on stations location
+          var stations = g.selectAll("g.stations_"+station_id).data(stations).enter().append("g").attr("class","stations_"+station_id);
+              //adding circles for container that contains stations 
+              stations.append("circle").attr("cx",function(d){
+                return projection([d.lon,d.lat])[0];
+              }).attr("cy",function(d){
+                return projection([d.lon,d.lat])[1];
+              }).attr("r",5).style("fill","red");
+
+              stations.on("mouseover",function(d,i){
+                d3.select(this).append("text").attr("class",station_id).style("z-index",10).attr("dy","2em")
+                .attr("transform","translate("+d3.mouse(this)+")").text(d.name);
+              }).on("mouseout",function(d,i){
+                d3.select(this).selectAll("text").remove();
+              });
+
+        
+        //this object gives the maximum and minimum bound of both x and y coordinates of current projection
+        var dimension = mercatorBounds(projection,maxlat),
+        minimumX = dimension[0][0],
+        maximumX = dimension[1][0];
+
+        var lines = g.selectAll("g."+station_id).data(wind_flow_data).enter().append("g").attr("class",station_id)
+        .each(function(d,i){
+          var temp,x1,
+              x0 = projection([+d["Wind_Lon"],+d["Wind_Lat"]]),
+              selectedElement = d3.select(this);
+              //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
+
+          if(i==wind_flow_data.length-1){x1=x0}
+          else{ x1 = projection([+wind_flow_data[i+1]["Wind_Lon"],+wind_flow_data[i+1]["Wind_Lat"]])};
+          //checking if start point and end point of curves are on right direction of wind flow
+          if(x1==x0){  
+          }else{ 
+            console.log(x0,x1);
+          temp = tweenTheCurves(d,wind_flow_data[i+1],x0,x1,minimumX,maximumX); 
+             // drawing the curves based on the whether they have parts of not
+              for(var x=0;x<temp.length;x++){
+                  var randomParticlesAroundEachLine = createRandomParticles(temp[x],i);
+
+                      for(var x=0;x<randomParticlesAroundEachLine.length;x++){
+                        var temp = randomParticlesAroundEachLine[x];
+                        //appends line as curves
+                        selectedElement.append("path").attr("class","parts").attr("d",berzierCurve(temp)).attr("counter",counter)
+                        .style("stroke-width",2)
+                        .style("stroke","black");
+                        //append arrow head in front of those lines
+                        selectedElement.append("path").attr("id","arrowHead_"+counter).attr("d",d3.symbol().type(d3.symbolTriangle).size(60))
+                        .attr("transform",function(){
+                              var rotate= "rotate("+findRotateAngle(temp[0][0],temp[0][1],temp[1][0],temp[1][1])+")";
+                              return "translate("+temp[1][0]+","+temp[1][1]+")"+rotate;
+                        }).attr("fill","white");
+                        counter++;
+                      } 
+              }                  
+        } 
+      }).on("mouseover",function(d,i){
+            var velocity = +d["Wind_Velocity"]; 
+            
+            d3.select(this).append("text").attr("class","velocity").attr("transform","translate("+d3.mouse(this)+")").style("z-index",50).attr("dy","2em")
+            .text(velocity.toFixed(2)+"m/s").style("fill","red");
+            }).on("mouseout",function(d,i){
+            d3.select(this).selectAll("text").remove();
+        });
+
+      //calculates the angle of rotation for the arrow
+      function findRotateAngle(x1,y1,x2,y2){
+        var angle = Math.atan2(y1-y2,x2-x1)*(180/Math.PI);
+        if(angle<0){
+          return (Math.abs(angle)+90);
+        }else if(angle>=0){
+          return (90-angle);
+        }
+      }
+   
+
+    //this function creates new parts of a curve based on their location in the new projection
+    function tweenTheCurves(a,b,x0,x1,minX,maxX){
+      var result=[],
+          temp=[];
+
+     if(+b["Wind_Lon"]>=+a["Wind_Lon"] && x1[0]<x0[0]){
+        var middlePoint = getTheConnectionPoint(x0,x1,"r",minX,maxX),
+            connectingPoint = [maxX,middlePoint],
+            nextOne=[minX,middlePoint];
+
+        temp.push(x0,connectingPoint);
+        result.push(temp);
+        temp=[];
+        temp.push(nextOne,x1);
+        result.push(temp);
+     }else if(+b["Wind_Lon"]<+a["Wind_Lon"] && x1[0]>=x0[0]){
+        var middlePoint = getTheConnectionPoint(x0,x1,"l",minX,maxX),
+              connectingPoint = [minX,middlePoint],
+              nextOne=[maxX,middlePoint];
+
+          temp.push(x0,connectingPoint);
+          result.push(temp);
+          temp=[];
+          temp.push(nextOne,x1);
+          result.push(temp);
+     }else{
+      temp.push(x0,x1);
+      result.push(temp);
+     }
+
+     return result;
+    }
+
+    //this function gets the exact location where the point is connected to two different sections
+    function getTheConnectionPoint(x0,x1,flag,minX,maxX){
+      //this part takes care of condition when start point is in right side of screen and end point at left side while panning
+      if(flag =="r"){
+      var base = Math.abs(x0[0]-maxX)+ Math.abs(minX-x1[0]),
+          height = x0[1]-x1[1],
+          tanRatio = height/base;
+      return x0[1]- (Math.abs(x0[0]-maxX) * tanRatio);
+      }//this part takes care of condition when start point is left side of screen and end point at right side while panning
+      else if(flag=="l"){
+        var base = Math.abs(x0[0]-minX)+Math.abs(maxX-x1[0]),
+            height = x0[1]-x1[1],
+            tanRatio = height/base;
+        return x1[1] + (Math.abs(x1[0]-maxX)* tanRatio);
+      }
+    }
+  
+    //creates random particles that are parallel and inside the max interpolation bound on each side
+    function createRandomParticles(value,index){
+    
+      var run = value[1][0]-value[0][0],
+          rise = value[0][1]-value[1][1],
+          tanRatio = rise/run,
+          yMax = value[0][1] + interpolationWidthBound,
+          yMin = value[0][1] - interpolationWidthBound,
+          xMax = value[0][0] + interpolationWidthBound,
+          xMin = value[0][0] - interpolationWidthBound,
+          particles=[];
+      
+
+      //when the slope of line is greater than 45 degrees
+        if(Math.abs(Math.atan(tanRatio)*(180/Math.PI)) > 45){
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][0]+offset);i<=xMax;i+=offset){
+                    var temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+               
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][0]-offset);i>=xMin;i-=offset){
+                    var temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    if(index==0){
+                       particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                     }
+              }      
+        }
+        else{
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][1]-offset);i>=yMin;i-=offset){
+                    var temp =  plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+               
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][1]+offset);i<=yMax;i+=offset){
+                    var temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+        }
+
+      //adding the actual line 
+      particles.push(value);
+
+      return particles;
+
+    }
+
+    //find the destination coordinate of randomly plotted points
+    function plotTheLinesForY(y1,ratio,x1,x2){
+      var temp=[],
+          y2 = y1 - (ratio * (x2-x1)); 
+      temp.push([x1,y1]);
+      temp.push([x2,y2]);
+      return temp;
+    }
+
+    function plotTheLinesForX(x1,ratio,y1,y2){
+      var temp=[],
+          x2 = ((y1-y2)/ratio)+ x1;
+      temp.push([x1,y1]);
+      temp.push([x2,y2]);
+      return temp;
+    }
+
+    // }
+
+    // var wind_flow_data=[], //unique values of a wind flow removing all the duplicates
+    //     objChecker = {};
+
+    // // iterating over the data to remove duplicates 
+    // for(var index=0;index<temp_data.length;index++){
+    //   if(index==0){
+    //     objChecker[temp_data[index]["Wind_Velocity"]]=undefined;
+    //     wind_flow_data[index]= temp_data[index];
+    //   }else if(temp_data[index]["Wind_Velocity"] in objChecker){
+    //     break;
+    //   }else{
+    //     objChecker[temp_data[index]["Wind_Velocity"]]=undefined;
+    //     wind_flow_data[index]= temp_data[index];
+    //   }
+
+    // }
+    
+    }
+
+    repeat();
+
+    //this function takes all the lines in the map and asks another function to show them as stream line
+    function repeat(){
+      for(var index =0;index<stationIDS.length;index++){
+        var id = stationIDS[index];
+
+        g.selectAll("g."+id).each(function(d,i){
+            var temp = d3.select(this);
+            temp.selectAll("path.parts").each(function(){
+              d3.select(this).call(animate);
+            });
+        });   
+      }
+    }
+
+
+    // this function animates a path with an arrow head like a stream line and repeats the animation
+    function animate(selection){
+              var indicator = selection.attr("counter"),
+                  pathString = selection.attr("d"),
+                  startPoint = pathString.substring(pathString.indexOf("M")+1,pathString.indexOf("L")).split(","),
+                  endPoint = pathString.substring(pathString.indexOf("L")+1,pathString.length).split(","),
+                  angle = findRotateAngle(startPoint[0],startPoint[1],endPoint[0],endPoint[1]);
+
+                  selection.attr("stroke-dasharray",function(){
+                    var length = this.getTotalLength();
+                    return "0,"+length+"";
+                  }).style("opacity",1)
+                  .transition().duration(1000).ease(d3.)
+                  .attrTween("stroke-dasharray",function(){
+                    var length = this.getTotalLength(),
+                    i = d3.interpolateString("0,"+length,length+","+length),
+                    path=this;
+
+                    return function(t){
+                      var arrow = g.select("#arrowHead_"+indicator),
+                      currenPoint = path.getPointAtLength(t*length);
+
+                      arrow.attr("transform","translate("+currenPoint.x+","+currenPoint.y+") rotate("+angle+")");
+                  //.style("opacity",length-(t*length));
+                  return i(t);
+                }
+                
+              }).style("opacity",0.2)
+                  .on("end",function(){
+                    d3.select(this).call(animate);
+                  });
+    }
+
+
+        
+  });
+
+    
+
+});
+
+    </script>
+  </body>
+  </html>
+

@@ -1,5 +1,6 @@
 
     var offset; //variable for defining distance between parallel curves as a wind
+
     
     //find the destination coordinate of randomly plotted points
     function plotTheLinesForY(y1,ratio,x1,x2){
@@ -233,15 +234,17 @@
         var slopeOfNextLine =  (nextLine[0][1]-nextLine[1][1]) / (nextLine[1][0]-nextLine[0][0]),
             slopeOfPreviousLine = (previousLine[0][1]-previousLine[1][1])/(previousLine[1][0]-previousLine[0][0]),
             particles = [];
+            
 
         //when the slope of line is greater than 45 degrees
         if(Math.abs(Math.atan(tanRatio)*(180/Math.PI)) > 45){
-
+            
                    //acute and acute angles
           if(((Math.round(slopeOfPreviousLine*tanRatio)==-1) || (findAngleBetween(previousLine,value,slopeOfPreviousLine,tanRatio)>0)) &&
             ((Math.round(slopeOfNextLine*tanRatio)==-1) || (findAngleBetween(value,nextLine,tanRatio,slopeOfNextLine)>0))){
 
               if((Math.abs(Math.atan(slopeOfPreviousLine)*(180/Math.PI)) < 45) && (Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) < 45)){
+                
 
                 if((value[0][1]-value[1][1])>=0){
 
@@ -1137,6 +1140,7 @@
           else if((findAngleBetween(previousLine,value,slopeOfPreviousLine,tanRatio)<0) &&
             ((Math.round(slopeOfNextLine*tanRatio)==-1) || (findAngleBetween(value,nextLine,tanRatio,slopeOfNextLine)>0))){
 
+
                 if(Math.abs(Math.atan(slopeOfPreviousLine)*(180/Math.PI)) > 45){
 
                     if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) > 45){
@@ -1512,13 +1516,14 @@
                   }
           }//obtuse and obtuse angles
           else{
+
                 if((Math.abs(Math.atan(slopeOfPreviousLine)*(180/Math.PI)) > 45 ) && (Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) > 45 )){
-            
                     var p=offset,counter=1;
                     // plot for left side
                     for(var i = (value[0][0]-p);i>=xMin;i-=offset,counter+=1){
                         var line = plotTheLinesForX(value[0][0]-(counter*offset),tanRatio,value[0][1],value[1][1]);
                             particles.push(line);
+
                     }
                     counter=1;
                     // plot for right side
@@ -1526,6 +1531,7 @@
                         var line = plotTheLinesForX(value[0][0]+(counter*offset),tanRatio,value[0][1],value[1][1]);
                             particles.push(line);
                     }
+
 
                 }
                 else if((Math.abs(Math.atan(slopeOfPreviousLine)*(180/Math.PI)) > 45 ) && (Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) <45 )){
@@ -3312,34 +3318,43 @@
     }
 
     //this creates random particles for a curve when the angle between the two consecutive curves in not acute or 90 degree
-    function createParticlesForLinesWithObtuseAngle(index,value,xMin,xMax,yMin,yMax,tanRatio,nextLine,previousLine){
+    function createParticlesForLinesWithObtuseAngle(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,nextLine,previousLine){
       var particles = [];
-
      
       if(index==-1){
       // this is when the slope of line is greater than 45 degrees
             if(Math.abs(Math.atan(tanRatio)*(180/Math.PI)) > 45)
-            {
+            {  
+              var temp;
               //this randomly creates all the lines on the right
               for(var i = (value[0][0]+offset);i<=xMax;i+=offset){
-                    particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]));
+                    temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
               }
                
               //this randomly creates all the lines on the right
               for(var i = (value[0][0]-offset);i>=xMin;i-=offset){
-                    particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]));
+                    temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
               }
 
            }// this is when the slope of line is smaller or equal to 45 degrees
            else{
+              var temp;
               //this randomly creates all the lines on the right
               for(var i = (value[0][1]-offset);i>=yMin;i-=offset){
-                    particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]));
+                    temp =  plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
               }
                
               //this randomly creates all the lines on the right
               for(var i = (value[0][1]+offset);i<=yMax;i+=offset){
-                    particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]));
+                    temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
               }
          }
       }else if(index==0){
@@ -3349,54 +3364,84 @@
             {
               if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) > 45){
 
+                  var temp;
                   //this randomly creates all the lines on the right
                   for(var i = (value[0][0]+offset);i<=xMax;i+=offset){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]));
+                        temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                        particles.push(temp);
+                        particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                   }
                    
                   //this randomly creates all the lines on the right
                   for(var i = (value[0][0]-offset);i>=xMin;i-=offset){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]));
+                        temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                        particles.push(temp);
+                        particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                   }
+
                 }else{
                   var p=offset,
                       incrementor = offset;
                   if((nextLine[1][0]-nextLine[0][0])>=0){
                     if((value[0][1]-value[1][1])>=0){
+                        var temp;
+
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                         p=offset;
 
                         for(var i = (value[0][0]-offset);i>=xMin;i-=offset,p+=incrementor){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                          temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                          particles.push(temp);
+                          particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
+
                     }else{
+                        var temp;
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
 
                         p=offset;
                         for(var i = (value[0][0]-offset);i>=xMin;i-=offset,p+=incrementor){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                          temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                          particles.push(temp);
+                          particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
+
                     }
                   }else{
                     if((value[0][1]-value[1][1])>=0){
+                      var temp;
                       for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                       p=offset;
                       for(var i = (value[0][0]-offset);i>=xMin;i-=offset,p+=incrementor){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                        temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                        particles.push(temp);
+                        particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
+    
                     }else{
+                        var temp;
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                         p=offset;
                         for(var i = (value[0][0]-offset);i>=xMin;i-=offset,p+=incrementor){
-                        particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                          temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                          particles.push(temp);
+                          particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                     }
                   }
@@ -3408,71 +3453,96 @@
 
                 if((nextLine[0][1]-nextLine[1][1])<0){
                       var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp =  plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
 
                   }else{
                     var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
                   }
 
                   if((nextLine[0][1]-nextLine[1][1])<0){
                     var p=offset,
+                    temp,
                     incrementor = offset;
                     if((value[1][0]-value[0][0])>=0){
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
+
                             particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }
                   }else{
                     var p=offset,
+                    temp,
                     incrementor = offset;
                     if((value[1][0]-value[0][0])>=0){
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }  
                   }
 
               }else{
+                  var temp;
                   //this randomly creates all the lines on the right
                   for(var i = (value[0][1]-offset);i>=yMin;i-=offset){
-                        particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]));
+                        temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                        particles.push(temp);
+                        particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                   }
                    
                   //this randomly creates all the lines on the right
                   for(var i = (value[0][1]+offset);i<=yMax;i+=offset){
-                        particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]));
+                        temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                        particles.push(temp);
+                        particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                   }
                 }
          }
       }
-      else if (index=data.length-2){
+      else if (index==dataLength-2){
 
               var slopeOfPreviousLine = (previousLine[0][1]-previousLine[1][1])/(previousLine[1][0]-previousLine[0][0]);
               //when angle of previous line is greater than 45 degrees 
@@ -3572,17 +3642,18 @@
     }
 
     //this creates random particles for a curve when the angle between the two consecutive curves is acute or 90 degree
-    function createParticlesForLinesWithAcuteAngleOrPerpendicular(index,value,xMin,xMax,yMin,yMax,tanRatio,nextLine,previousLine){
+    function createParticlesForLinesWithAcuteAngleOrPerpendicular(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,nextLine,previousLine){
       var particles = [];
 
-
       //this plots random lines for first and last element in the flow
-      if(index==0 || index==data.length-2){
+      if(index==0 || index==dataLength-2){
           if(index==0){
             var slopeOfNextLine =  (nextLine[0][1]-nextLine[1][1]) / (nextLine[1][0]-nextLine[0][0]);
           }else{
             var slopeOfPreviousLine = (previousLine[0][1]-previousLine[1][1])/(previousLine[1][0]-previousLine[0][0]);
           }
+
+
 
       // this is when the slope of line is greater than 45 degrees
             if(Math.abs(Math.atan(tanRatio)*(180/Math.PI)) > 45)
@@ -3591,52 +3662,71 @@
               if(nextLine!=null && previousLine==undefined){
                 if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) < 45){
                   var p=offset,
+                      temp,
                       incrementor = offset;
                   if((nextLine[1][0]-nextLine[0][0])>=0){
                     if((value[0][1]-value[1][1])>=0){
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                     }else{
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                     }
                   }else{
                     if((value[0][1]-value[1][1])>=0){
                       for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                     }
                   }
                 }else{
                 if(findLeftOrRightByX(value,nextLine,"upwards")=="right"){
                   var p=offset,
+                      temp,
                       incrementor = offset;
                   if((value[0][1]-value[1][1])>=0){
                     for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                          particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                          temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                          particles.push(temp);
+                          particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                     }
                   }else{
                     for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                          particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                          temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                          particles.push(temp);
+                          particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                     }
                   }
                 }
                 else{
                  var p=offset,
+                    temp,
                     incrementor = offset;
                     if((value[0][1]-value[1][1])>=0){
                       for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                         for(var i = (value[0][0]+p);i<=xMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                            temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                     }
                 } 
@@ -3714,56 +3804,74 @@
               //this randomly creates all the lines on the left
               if(nextLine!=undefined && previousLine==undefined){
                   if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) < 45){
-                    var p=offset,
-                        incrementor = offset;
                     if((nextLine[1][0]-nextLine[0][0])>=0){
                       var p=offset,
+                          temp,
                           incrementor = offset;
                       if((value[0][1]-value[1][1])>=0){
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }   
                     }else{
                       var p=offset,
+                          temp,
                           incrementor = offset;
                       if((value[0][1]-value[1][1])>=0){
                           for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                                particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                                temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                                particles.push(temp);
+                                particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                           }
                       }else{
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                                particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                                temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                                particles.push(temp);
+                                particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                           }  
                       }
                     }
                 }else{
                     if(findLeftOrRightByX(value,nextLine,"upwards")=="right"){
                       var p=offset,
+                          temp,
                           incrementor = offset;
                       if((value[0][1]-value[1][1])>=0){
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                              temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
                     }else{
                       var p=offset,
+                          temp,
                           incrementor = offset;
                       if((value[0][1]-value[1][1])>=0){
                           for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                                particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p));
+                                temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]+p);
+                                particles.push(temp);
+                                particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                           }
                       }else{
                         for(var i = (value[0][0]-p);i>=xMin;i-=offset,p+=incrementor){
-                                particles.push(plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p));
+                                temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]-p);
+                                particles.push(temp);
+                                particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                           }  
                       }
                     }
@@ -3843,27 +3951,37 @@
                 if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) > 45){
                   if((nextLine[0][1]-nextLine[1][1])<0){
                       var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
 
                   }else{
                     var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
                   }
@@ -3872,27 +3990,37 @@
 
                   if(findUpOrDownByY(value,nextLine,"upwards")=="below"){
                     var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
                   }
                   else{
                     var p=offset,
+                      temp,
                       incrementor = offset;
                       if((value[1][0]-value[0][0])>=0){
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }else{
                         for(var i = (value[0][1]-p);i>=yMin;i-=offset,p+=incrementor){
-                              particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                              temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                              particles.push(temp);
+                              particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                         }
                       }
                 }
@@ -3966,53 +4094,73 @@
                 if(Math.abs(Math.atan(slopeOfNextLine)*(180/Math.PI)) < 45){
                   if((nextLine[0][1]-nextLine[1][1])<0){
                     var p=offset,
+                    temp,
                     incrementor = offset;
                     if((value[1][0]-value[0][0])>=0){
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }
                   }else{
                     var p=offset,
+                    temp,
                     incrementor = offset;
                     if((value[1][0]-value[0][0])>=0){
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }else{
                       for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                            particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                            temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                            particles.push(temp);
+                            particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                       }
                     }  
                   }
                 }else{
                     if(findUpOrDownByY(value,nextLine,"upwards")=="below"){
                       var p=offset,
+                          temp,
                           incrementor = offset;
                           if((value[1][0]-value[0][0])>=0){
                             for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                                  particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                                  temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                                  particles.push(temp);
+                                  particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                             }
                           }else{
                             for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                                  particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                                  temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                                  particles.push(temp);
+                                  particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                             }
                           }
                     }
                     else{
                           var p=offset,
+                          temp,
                           incrementor = offset;
                           if((value[1][0]-value[0][0])>=0){
                             for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                                  particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p));
+                                  temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]+p);
+                                  particles.push(temp);
+                                  particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                             }
                           }else{
                             for(var i = (value[0][1]+p);i<=yMax;i+=offset,p+=incrementor){
-                                  particles.push(plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p));
+                                  temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]-p);
+                                  particles.push(temp);
+                                  particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
                             }
                           }   
                     }

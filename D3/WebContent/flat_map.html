@@ -10,32 +10,30 @@
 
   </style>
   <body id="main">
-    <script type="text/javascript" src="http://d3js.org/d3.v4.min.js"></script>
-    <script src="http://d3js.org/topojson.v0.min.js"></script>
-    <script type="text/javascript" src="./windCurves.js"></script>
+    <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
+    <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
+    <script type="text/javascript" src="windCurves.js"></script>
     <script>
 
-    var data = [{x:0,y: 40,v:100}, {x:40, y:20,v:300},{x:30, y:70,v:400}, {x:50,y: 85,v:500}, {x:20,y: 60,v:600}];
-    // var data = [{x:0,y: 40},{x:20,y: 44},{x:60,y: 46},{x:80,y: 48},{x:100,y: 50},{x:100,y: 52},{x:80,y: 48},{x:50,y: 38},{x:10,y:28}];
 
     var colors = ["#d73027","#f46d43","#fdae61","#fee090","#ffffbf","#e0f3f8","#abd9e9","#74add1","#4575b4"];
 
-    var interpolationWidthBound = 40;
+    var interpolationWidthBound = 0; //do not set both offset and width to zero else will occur endless loop
 
-    offset = 5;
+    offset = 8;
 
-    var berzierCurve = d3.line().curve(d3.curveBundle).x(function(d){return d[0] }).y(function(d){ return d[1]});
+    var berzierCurve = d3.line().x(function(d){return d[0] }).y(function(d){ return d[1]});
 
     var width = 1200,
     height = 800,
-    maxlat = 88,
+    maxlat = 90,
     sExtent = [1,3],
-    initialScale = 180;
+    initialScale = 500;
 
     var projection = d3.geoMercator()
     .center([0, 35])
     .scale(initialScale)
-    .translate([500,350])
+    .translate([500,550])
     .rotate([0,0]);
 
     var svg = d3.select("body").append("svg")
@@ -75,52 +73,61 @@
       .attr("fill","#37722B")
       .attr("stroke-width",1);
 
-      d3.csv("https://gist.githubusercontent.com/d3noob/5193723/raw",function(error,data){
-        //this object binds all the station objects to a g container
-       var stations = g.selectAll("g.stations").data(data).enter().append("g").attr("class","stations");
+      d3.csv("http://127.0.0.1:8000/data.csv",function(error,data){
+        //converts the csv data into data arranged into groups based on their ID's
 
-       stations.append("circle").attr("cx",function(d){
-          return projection([d.lon,d.lat])[0];
-        }).attr("cy",function(d){
-          return projection([d.lon,d.lat])[1];
-        }).attr("r",5).style("fill","orange")
+        var data = d3.nest().key(function(d){return d.ID}).entries(data); //ID now is key
+        //looping through the groups based on keys
+        for(var i=0;i<1;i++){
 
-        stations.on("mouseover",function(d,i){
-          d3.select(this).append("text").attr("class","station_name").style("z-index",10).attr("dy","2em")
-          .attr("transform","translate("+d3.mouse(this)+")").text(d.city+","+d.country);
-        }).on("mouseout",function(d,i){
-          d3.select(this).selectAll("text").remove();
-        })
-        
-      });
+          var wind_flow_data = data[i]["values"], //values of the wind flow
+              station_id = data[i]["key"],//value of the key for that station to station wind flow
+              dataLength = wind_flow_data.length; 
+    
+
+          var stations=[];
+          //putting the source station and destination statino data to show them as circles
+          stations.push({name:wind_flow_data[0]["Source"],lat:+wind_flow_data[0]["S_Lat"],lon:+wind_flow_data[0]["S_Lon"]});
+          stations.push({name:wind_flow_data[0]["Destination"],lat:+wind_flow_data[0]["D_Lat"],lon:+wind_flow_data[0]["D_Lon"]})
 
 
-    //this object gives the maximum and minimum bound of both x and y coordinates of current projection
-    var dimension = mercatorBounds(projection,maxlat),
-      minimumX = dimension[0][0],
-      maximumX = dimension[1][0];
+          //this creates an stations circle based on stations location
+          var stations = g.selectAll("g.stations_"+station_id).data(stations).enter().append("g").attr("class","stations_"+station_id);
+              //adding circles for container that contains stations 
+              stations.append("circle").attr("cx",function(d){
+                return projection([d.lon,d.lat])[0];
+              }).attr("cy",function(d){
+                return projection([d.lon,d.lat])[1];
+              }).attr("r",2).style("fill","red");
 
-    //this object creates all the constitute parts of every curves to maintain consistency with translation and panning
-    var lines = g.selectAll("g.curves").data(data).enter().append("g")
-    .attr("class","curves")
-    .each(function(d,i){
-      var temp,x1,x0 = projection([d.x,d.y]),
-          selectedElement = d3.select(this);
+              stations.on("mouseover",function(d,i){
+                d3.select(this).append("text").attr("class",station_id).style("z-index",10).attr("dy","2em")
+                .attr("transform","translate("+d3.mouse(this)+")").text(d.name);
+              }).on("mouseout",function(d,i){
+                d3.select(this).selectAll("text").remove();
+              });
 
-      if(i==data.length-1){ 
-        x1=x0;
-      }else{
-        x1 = projection([data[i+1].x,data[i+1].y]);
-      }
-      
-      if(x1==x0){
-        //do nothing because this line has already been created 
-      }else{
-        temp = tweenTheCurves(d,data[i+1],x0,x1,minimumX,maximumX);
+        //this object gives the maximum and minimum bound of both x and y coordinates of current projection
+        var dimension = mercatorBounds(projection,maxlat),
+        minimumX = dimension[0][0],
+        maximumX = dimension[1][0];
 
-        if(temp.length>1){
-          for(var x=0;x<temp.length;x++){
-              var randomParticlesAroundEachLine;
+        var lines = g.selectAll("g.curves_"+station_id).data(wind_flow_data).enter().append("g").attr("class","curves_"+station_id)
+        .each(function(d,i){
+          var temp,x1,
+              x0 = projection([+d["Wind_Lon"],+d["Wind_Lat"]]),
+              selectedElement = d3.select(this);
+              //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
+          if(i==dataLength-1){x1=x0}else{ x1 = projection([+wind_flow_data[i+1]["Wind_Lon"],+wind_flow_data[i+1]["Wind_Lat"]])};
+          //checking if start point and end point of curves are on right direction of wind flow
+          if(x1==x0){  
+          }else{ 
+          temp = tweenTheCurves(d,wind_flow_data[i+1],x0,x1,minimumX,maximumX); 
+
+          // drawing the curves based on the whether they have parts of not
+          if(temp.length>1){
+            for(var x=0;x<temp.length;x++){
+                var randomParticlesAroundEachLine;
               
                 if(x==temp.length-1){
                   randomParticlesAroundEachLine = createRandomParticles(temp[x],i,"finalPart");
@@ -131,35 +138,33 @@
                 for(var y=0;y<randomParticlesAroundEachLine.length;y++){   
                     selectedElement.append("path").attr("class","parts").attr("d",berzierCurve(randomParticlesAroundEachLine[y]))
                     .style("opacity",1)
-                    .style("stroke-width",1)
-                    .style("stroke",colors[i]).style("opacity",1);
+                    .style("stroke-width",5)
+                    .style("stroke","black");
                   }
             }               
-        }else{
+          }else{
                 var randomParticlesAroundEachLine = createRandomParticles(temp[0],i,"total");
-                    for(var x=0;x<randomParticlesAroundEachLine.length;x++){
-                            selectedElement.append("path").attr("class","parts").attr("d",berzierCurve(randomParticlesAroundEachLine[x]))
-                            .style("opacity",1)
-                            .style("stroke-width",1)
-                            .style("stroke",colors[i]).style("opacity",1);
-                          }       
-      }
-    } 
-    }).on("mouseover",function(d,i){
-      d3.select(this).append("text").attr("class","velocity").attr("transform","translate("+d3.mouse(this)+")").style("z-index",10).attr("dy","2em")
-      .text(d.v+"m/s");
-    }).on("mouseout",function(d,i){
-      d3.select(this).selectAll("text").remove();
-    });
-
-    lines.exit().remove();
+                for(var x=0;x<randomParticlesAroundEachLine.length;x++){
+                    selectedElement.append("path").attr("class","parts_"+station_id).attr("d",berzierCurve(randomParticlesAroundEachLine[x]))
+                    .style("opacity",1)
+                    .style("stroke-width",5)
+                    .style("stroke","black");
+                  }       
+          } 
+        }
+      }).on("mouseover",function(d,i){
+            d3.select(this).append("text").attr("class","velocity").attr("transform","translate("+d3.mouse(this)+")").style("z-index",10).attr("dy","2em")
+            .text(d["Wind_Velocity"]+"m/s");
+            }).on("mouseout",function(d,i){
+            d3.select(this).selectAll("text").remove();
+        });
 
     //this function creates new parts of a curve based on their location in the new projection
     function tweenTheCurves(a,b,x0,x1,minX,maxX){
       var result=[],
           temp=[];
 
-     if(b.x>=a.x && x1[0]<x0[0]){
+     if(+b["Wind_Lon"]>=+a["Wind_Lon"] && x1[0]<x0[0]){
         var middlePoint = getTheConnectionPoint(x0,x1,"r",minX,maxX),
             connectingPoint = [maxX,middlePoint],
             nextOne=[minX,middlePoint];
@@ -169,7 +174,7 @@
         temp=[];
         temp.push(nextOne,x1);
         result.push(temp);
-     }else if(b.x<a.x && x1[0]>=x0[0]){
+     }else if(+b["Wind_Lon"]<+a["Wind_Lon"] && x1[0]>=x0[0]){
         var middlePoint = getTheConnectionPoint(x0,x1,"l",minX,maxX),
               connectingPoint = [minX,middlePoint],
               nextOne=[maxX,middlePoint];
@@ -220,42 +225,42 @@
         //the previous and next line in chain for wind flow based on each condition
         var nextLine,previousLine;
         if(index==0){
-
-            var startingPointForNextLine = projection([data[index+1].x,data[index+1].y]),
-                endingPointForNextLine = projection([data[index+2].x,data[index+2].y]),
-                nextLine = tweenTheCurves(data[index+1],data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
+            var startingPointForNextLine = projection([+wind_flow_data[index+1]["Wind_Lon"],+wind_flow_data[index+1]["Wind_Lat"]]),
+                endingPointForNextLine = projection([+wind_flow_data[index+2]["Wind_Lon"],+wind_flow_data[index+2]["Wind_Lat"]]),
+                nextLine = tweenTheCurves(wind_flow_data[index+1],wind_flow_data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
                 slopeOfNextLine =  (nextLine[0][1]-nextLine[1][1]) / (nextLine[1][0]-nextLine[0][0]);
             //for case when angle between consecutive lines is less than 90 degrees
             if((Math.round(slopeOfNextLine*tanRatio)==-1) || (findAngleBetween(value,nextLine,tanRatio,slopeOfNextLine)>0)){
-              particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(index,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
+              particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
             }//for case when angle between consecutive lines is greater than 90 degrees
             else{
-                  particles = createParticlesForLinesWithObtuseAngle(index,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
+                particles = createParticlesForLinesWithObtuseAngle(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
             }
 
-        }else if(index==data.length-2){
+        }else if(index==dataLength-2){
 
-          var startingPointForPreviousLine = projection([data[index-1].x,data[index-1].y]),
-              endingPointForPreviousLine = projection([data[index].x,data[index].y]),
-              previousLine = tweenTheCurves(data[index-1],data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX)[0],
+          var startingPointForPreviousLine = projection([+wind_flow_data[index-1]["Wind_Lon"],+wind_flow_data[index-1]["Wind_Lat"]]),
+              endingPointForPreviousLine = projection([+wind_flow_data[index]["Wind_Lon"],+wind_flow_data[index]["Wind_Lat"]]),
+              previousLine = tweenTheCurves(wind_flow_data[index-1],wind_flow_data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX),
+              previousLine = previousLine[previousLine.length-1],
               slopeOfPreviousLine = (previousLine[0][1]-previousLine[1][1])/(previousLine[1][0]-previousLine[0][0]);
-              
               //for case when angle between consecutive lines is less than 90 degrees
               if((Math.round(tanRatio*slopeOfPreviousLine)==-1) || (findAngleBetween(previousLine,value,slopeOfPreviousLine,tanRatio)>0)){
-                particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(index,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);
+                particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);
               }//for case when angle between consecutive lines is greater than 90 degrees
               else{
-                particles = createParticlesForLinesWithObtuseAngle(index,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);     
+                particles = createParticlesForLinesWithObtuseAngle(index,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);     
               }
 
         }else{
-          var startingPointForNextLine = projection([data[index+1].x,data[index+1].y]),
-              endingPointForNextLine = projection([data[index+2].x,data[index+2].y]),
-              nextLine = tweenTheCurves(data[index+1],data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
+          var startingPointForNextLine = projection([+wind_flow_data[index+1]["Wind_Lon"],+wind_flow_data[index+1]["Wind_Lat"]]),
+              endingPointForNextLine = projection([+wind_flow_data[index+2]["Wind_Lon"],+wind_flow_data[index+2]["Wind_Lat"]]),
+              nextLine = tweenTheCurves(wind_flow_data[index+1],wind_flow_data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
               
-              startingPointForPreviousLine = projection([data[index-1].x,data[index-1].y]),
-              endingPointForPreviousLine = projection([data[index].x,data[index].y]),
-              previousLine = tweenTheCurves(data[index-1],data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX)[0],
+              startingPointForPreviousLine = projection([+wind_flow_data[index-1]["Wind_Lon"],+wind_flow_data[index-1]["Wind_Lat"]]),
+              endingPointForPreviousLine = projection([+wind_flow_data[index]["Wind_Lon"],+wind_flow_data[index]["Wind_Lat"]]),
+              previousLine = tweenTheCurves(wind_flow_data[index-1],wind_flow_data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX),
+              previousLine = previousLine[previousLine.length-1];
              
               particles = createParticlesForMiddleLine(value,xMin,xMax,yMin,yMax,value,tanRatio,nextLine,previousLine);
 
@@ -264,41 +269,42 @@
     } //this is when the line is a part of another line separated into two different places due to translation
     else if(indicator=="intermediatePart"){
       if(index==0){
-        particles = createParticlesForLinesWithObtuseAngle(-1,value,xMin,xMax,yMin,yMax,tanRatio);
+        particles = createParticlesForLinesWithObtuseAngle(-1,dataLength,value,xMin,xMax,yMin,yMax,tanRatio);
       }else {
         //nned to check the previous line is final or intermediate part as well means previousline[0] may not work
-        var startingPointForPreviousLine = projection([data[index-1].x,data[index-1].y]),
-            endingPointForPreviousLine = projection([data[index].x,data[index].y]),
-            previousLine = tweenTheCurves(data[index-1],data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX)[0],
+        var startingPointForPreviousLine = projection([+wind_flow_data[index-1]["Wind_Lon"],+wind_flow_data[index-1]["Wind_Lat"]]),
+            endingPointForPreviousLine = projection([+wind_flow_data[index]["Wind_Lon"],+wind_flow_data[index]["Wind_Lat"]]),
+            previousLine = tweenTheCurves(wind_flow_data[index-1],wind_flow_data[index],startingPointForPreviousLine,endingPointForPreviousLine,minimumX,maximumX),
+            previousLine = previousLine[previousLine.length-1],
             slopeOfPreviousLine = (previousLine[0][1]-previousLine[1][1])/(previousLine[1][0]-previousLine[0][0]);
 
             //for case when angle between consecutive lines is less than 90 degrees
               if((Math.round(tanRatio*slopeOfPreviousLine)==-1) || (findAngleBetween(previousLine,value,slopeOfPreviousLine,tanRatio)>0)){
-                particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(data.length-2,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);
+                particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(dataLength-2,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);
               }//for case when angle between consecutive lines is greater than 90 degrees
               else{
-                particles = createParticlesForLinesWithObtuseAngle(data.length-2,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);     
+                particles = createParticlesForLinesWithObtuseAngle(dataLength-2,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,null,previousLine);     
               }
       }
 
     }else if(indicator=="finalPart"){
 
-      if(index==data.length-2){
-        particles = createParticlesForLinesWithObtuseAngle(-1,value,xMin,xMax,yMin,yMax,tanRatio);
+      if(index==dataLength-2){
+        particles = createParticlesForLinesWithObtuseAngle(-1,dataLength,value,xMin,xMax,yMin,yMax,tanRatio);
       }
       else{
-        var startingPointForNextLine = projection([data[index+1].x,data[index+1].y]),
-            endingPointForNextLine = projection([data[index+2].x,data[index+2].y]),
-            nextLine = tweenTheCurves(data[index+1],data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
+        var startingPointForNextLine = projection([+wind_flow_data[index+1]["Wind_Lon"],+wind_flow_data[index+1]["Wind_Lat"]]),
+            endingPointForNextLine = projection([+wind_flow_data[index+2]["Wind_Lon"],+wind_flow_data[index+2]["Wind_Lat"]]),
+            nextLine = tweenTheCurves(wind_flow_data[index+1],wind_flow_data[index+2],startingPointForNextLine,endingPointForNextLine,minimumX,maximumX)[0],
             slopeOfNextLine =  (nextLine[0][1]-nextLine[1][1]) / (nextLine[1][0]-nextLine[0][0]);
 
             //for case when angle between consecutive lines is less than 90 degrees
             if((Math.round(slopeOfNextLine*tanRatio)==-1) || (findAngleBetween(value,nextLine,tanRatio,slopeOfNextLine)>0)){
-              particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(0,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
+              particles = createParticlesForLinesWithAcuteAngleOrPerpendicular(0,dataLength,value,xMin,xMax,yMin,yMax,tanRatio,nextLine);
 
             }//for case when angle between consecutive lines is greater than 90 degrees
             else{
-                  particles = createParticlesForLinesWithObtuseAngle(0,value,xMin,xMax,yMin,yMax,tanRatio);
+                  particles = createParticlesForLinesWithObtuseAngle(0,dataLength,value,xMin,xMax,yMin,yMax,tanRatio);
             }
       }
     }  
@@ -309,132 +315,40 @@
 
     }
 
-
-
-    repeat();
-
     //this function just creates animation by using the stroke-dashoffset and stroke-dashrray attribute of path for changing the place from where the dash pattern starts while chaging the size of dash 
-    function repeat(){
+    // function repeat(){
 
-      var total = g.selectAll(".parts")
-      .attr("stroke-dasharray",function(){
-            return ""+this.getTotalLength()/5+","+this.getTotalLength()/5+"";
-      })
-      .attr("stroke-dashoffset",function(){return this.getTotalLength();})
-      .transition().duration(1000).ease(d3.easeLinear)
-      .attr("stroke-dasharray",function(d,i){ 
-            var length = this.getTotalLength()* (0.5),
-                  dash = this.getTotalLength()* (0.25);
-            return ""+length+" "+dash+"";
-      })
-      .attr("stroke-dashoffset",function(d,i){
-        return parseFloat(d3.select(this).attr("stroke-dashoffset"))-parseFloat(this.getTotalLength());
-      })
-      .on("end",function(){
-        d3.select(this).transition().duration(1000).ease(d3.easeLinear)
-        .attr("stroke-dasharray",function(d,i){
-        return ""+this.getTotalLength()/5+","+this.getTotalLength()/5+"";
-        })
-        .attr("stroke-dashoffset",function(){
-          return parseFloat(d3.select(this).attr("stroke-dashoffset"))-parseFloat(this.getTotalLength());
-        }).on("end",repeat);
-      });     
+    //   var total = g.selectAll(".parts")
+    //   .attr("stroke-dasharray",function(){
+    //         return ""+this.getTotalLength()/5+","+this.getTotalLength()/5+"";
+    //   })
+    //   .attr("stroke-dashoffset",function(){return this.getTotalLength();})
+    //   .transition().duration(1000).ease(d3.easeLinear)
+    //   .attr("stroke-dasharray",function(d,i){ 
+    //         var length = this.getTotalLength()* (0.5),
+    //               dash = this.getTotalLength()* (0.25);
+    //         return ""+length+" "+dash+"";
+    //   })
+    //   .attr("stroke-dashoffset",function(d,i){
+    //     return parseFloat(d3.select(this).attr("stroke-dashoffset"))-parseFloat(this.getTotalLength());
+    //   })
+    //   .on("end",function(){
+    //     d3.select(this).transition().duration(1000).ease(d3.easeLinear)
+    //     .attr("stroke-dasharray",function(d,i){
+    //     return ""+this.getTotalLength()/5+","+this.getTotalLength()/5+"";
+    //     })
+    //     .attr("stroke-dashoffset",function(){
+    //       return parseFloat(d3.select(this).attr("stroke-dashoffset"))-parseFloat(this.getTotalLength());
+    //     }).on("end",repeat);
+    //   });     
 
+    // }
+    
     }
-
-    // this part does all the zooming and panning for all the elements or nodes inside the selected division 
-    var zoom = d3.zoom().scaleExtent(sExtent).on("zoom",redraw);
-
-    g.call(zoom);
-
-    //since not translation was done initially therefore it is set to 0,0
-    var lastTranslate = [0,0],
-    lastScale = null;
-
-    //this function draws all the re projected data on the new projection created by panning and zooming
-    function redraw(){
-      if(d3.event){
-        var scale = d3.event.transform.k,
-        translate = [d3.event.transform.x,d3.event.transform.y];
-
-        if(scale!=lastScale){
-          projection.scale(initialScale * scale);
-        }
-        else if(translate[0]!=lastTranslate[0] && translate[1]!=lastTranslate[1]) {
-          var dx = translate[0]-lastTranslate[0],
-              dy = translate[1]-lastTranslate[1],
-              yaw = projection.rotate()[0],
-              tp = projection.translate();
-              //rotating the projection sideways to give the impression of panning based on the difference of x coordinates 
-              // of two consecutive translates operations on the projection based on current scale
-              projection.rotate([yaw+(360 * dx/width * sExtent[0]/scale),0,0]);
-
-              // use y translation to translate projection, clamped by min/max latitude and this part doesnot relate to x translation
-              var b = mercatorBounds(projection, maxlat);
-              //this part for dragging downwards max bound it can drag downwards is till the least y coordinate of that projection
-              if (b[0][1] + dy > 0) dy = -b[0][1];
-              //this part for dragging upwards and max bound for dragging upward is till the height of g element
-              else if (b[1][1] + dy < height) dy = height-b[1][1];
-              //this is for dragging if the dy is inside the bound between 0 and height
-              projection.translate([tp[0],tp[1]+dy]); 
-        }
-        //these values should be keep no matter translate happens or scaling
-        // because if not scalling is done still this one will have last scaling
-        //if translate is not done then it will have new translated values of all the elements
-        // which is made due to scaling 
-        lastScale=scale;
-        lastTranslate = translate;
-      }
-
-       var latestDimension = mercatorBounds(projection,maxlat);
-           latestMinX = latestDimension[0][0],
-           latestMaxX = latestDimension[1][0];
-       //this part stops the previous animation which was happening with all the curves representing wind    
-       g.selectAll(".parts").transition().duration(0);
-      //all of the codes after this re-projects all the nodes or elements inside the g container
-       g.selectAll("path").attr("d",path.projection(projection));
-
-       g.selectAll("circle").attr("cx",function(d){return projection([d.lon,d.lat])[0];})
-       .attr("cy",function(d){return projection([d.lon,d.lat])[1]});
-
-       //this section first clears all the path parts that was appended for each g element which is bounded with the data and then
-       //recreates new ones based on the projection
-       g.selectAll(".curves").each(function(d,i){
-
-        var temp,x1,x0 = projection([d.x,d.y]),
-            selectedElement = d3.select(this);
-        //removing all the previous paths that is the child of this container so that newly projected curves can be appended
-        selectedElement.selectAll("*").remove();
-
-        if(i==data.length-1){ 
-          x1=x0;
-        }else{
-          x1 = projection([data[i+1].x,data[i+1].y]);
-        }
         
-        if(x1==x0){}
-        else{
-          temp = tweenTheCurves(d,data[i+1],x0,x1,latestMinX,latestMaxX);
-          //this parts creates multiple paths for a curve if start point and end point of the curve are in different sides of a screen
-          if(temp.length>1){
-            temp.forEach(function(entry){
-              selectedElement.append("path").attr("class","parts").attr("d",berzierCurve(entry)).attr("stroke",function(d,i){
-              return (d.v>200?"red":"red");}).attr("stroke-width",1).attr("fill","none");
-              // .attr("stroke-dasharray","30 10")
-              // .attr("stroke-dashoffset",function(){return this.getTotalLength()});
-            });  
-          }else{
-            selectedElement.append("path").attr("class","parts").attr("d",berzierCurve(temp[0])).attr("stroke",function(d,i){
-              return (d.v>200?"red":"red");
-            }).attr("stroke-width",1).attr("fill","none");
-            // .attr("stroke-dasharray","30 10").attr("stroke-dashoffset",function(){return this.getTotalLength()});
-          }
-        } 
+      });
 
-         });
-         //restarting the animation after all the paths and curves have been re projected in new projection
-         repeat();       
-    }
+    
 
     });
 

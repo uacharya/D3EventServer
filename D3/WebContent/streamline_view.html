@@ -160,7 +160,7 @@
               selectedElement = d3.select(this);
               //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
 
-          if(i>=wind_flow_data.length-2){x1=x0}
+          if(i==wind_flow_data.length-1){x1=x0}
           else{ x1 = projection([+wind_flow_data[i+1]["Wind_Lon"],+wind_flow_data[i+1]["Wind_Lat"]])};
           //checking if start point and end point of curves are on right direction of wind flow
           if(x1==x0){  

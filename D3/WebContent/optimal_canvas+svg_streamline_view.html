@@ -1,0 +1,586 @@
+  <!DOCTYPE html>
+  <meta charset="utf-8">
+  <title> checking animation</title>
+  <style>
+  text {
+  pointer-events: none;
+  text-anchor: middle;
+  font: 13px sans-serif;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+body { margin: 0; }
+
+canvas#canvasDemo {
+  position: absolute;
+  pointer-events:none;
+  top: 0px;
+  left: 0px;
+  z-index: 1;
+}
+
+svg#topSvg{
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events:none;
+  z-index: 2;
+}
+
+  </style>
+  <body>
+    <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
+    <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
+    <script>
+    "use strict";
+
+    var interpolationWidthBound =0; //do not set both offset and width to zero else will occur endless loop
+
+    var offset = 10;
+
+    var width = 1200,
+    height = 800,
+    maxlat = 90,
+    sExtent = [1,3],
+    initialScale = 1400;
+
+    var projection = d3.geoMercator()
+    .center([0, 35])
+    .scale(initialScale)
+    .translate([500,1050])
+    .rotate([0,0]);
+
+
+    var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("z-index",0)
+    // .attr("clip-path","url(#clipIt)")
+    .style("background-color","#1ca2ba");
+
+
+    var topSvg = d3.select("body").append("svg").attr("id","topSvg")
+    .attr("width", width)
+    .attr("height", height)
+    .style("z-index",2);
+
+
+    var canvas = d3.select("body").append("canvas").attr("id","canvasDemo").attr("width",width)
+    .attr("height",height).node().getContext('2d');
+    
+    // svg.append("svg:clipPath").attr("id","clipIt").append("rect").attr("x",0).attr("y",0).attr("width",640).attr("height",1080);
+
+    //creating a marker as arrowhead
+    // svg.append("defs").append("marker").attr("id","arrowHead").attr("refX",3).attr("refY",3).attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto")
+    // .append("path").attr("d","M0,0L6,3L0,6L3,3L0,0").attr("fill","white");
+
+    var g = svg.append("g");
+    
+    var path = d3.geoPath()
+    .projection(projection);
+
+  // find the top left and bottom right of current projection
+    function mercatorBounds(projection, maxlat) {
+        var yaw = projection.rotate()[0],
+            xymax = projection([-yaw+180-1e-6,-maxlat]), 
+            /* since there are 360 degrees of meridians in total adding 180 to the 
+            initial center of projection which is given by -yaw gives right most x cooridnate in the projection one can 
+            reach and since we are not rotating latitude wise so max for y coordinate is given by -max latitude based on 
+            computer coordinates system */
+            xymin = projection([-yaw-180+1e-6, maxlat]);
+            /* in this case subtracting gives the leftmost x coordinate and max latitude gives the least y coordinate */  
+        return [xymin,xymax];
+    }
+
+    //load and display the World
+    d3.json("http://127.0.0.1:8085/world-map.json", function(error, topology) {
+
+      g.selectAll("path")
+      .data(topojson.object(topology, topology.objects.countries)
+        .geometries)
+      .enter()
+      .append("path")
+      .attr("d", path)
+      .attr("stroke","white")
+      .attr("fill","#e1bb9e")
+      .attr("stroke-width",1);
+
+    var dataDate = 1929;
+
+
+    var timeID = setInterval(function(){d3.request("http://127.0.0.1:8085/").post(JSON.stringify({date:dataDate}),function(error,data){
+
+        if(data.responseText=="Ready"){
+         getStreamFLowData(dataDate);
+         dataDate++;
+         clearInterval(timeID);
+        }
+
+      });
+   },1000);
+
+
+  function getStreamFLowData(date){
+
+
+      d3.csv("http://127.0.0.1:8085/data"+date+".csv",function(error,response){
+
+        d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
+        d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
+        d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new data comes in
+
+        var totalPathData=[];
+
+        //converts the csv data into data arranged into groups based on their ID'ss
+        var data = d3.nest().key(function(d){return d.ID}).entries(response), //ID now is key
+            upperBound = d3.max(data,function(item){
+              return item["values"].length;
+            }),
+
+
+            highestVelocity = d3.max(data,function(item){
+              return d3.max(item["values"],function(d){
+                      return +d["Wind_Velocity"];
+              });
+            }),
+            stationIDS = [];
+
+
+        var requestID, //variable to store request ID of animation
+            allFrames={}; //variable to store caches frames for animation
+
+        var arrowSize = d3.scaleLinear().domain([1,upperBound]).range([10,1]).clamp(true), //bounding the arrow size according to lines in a flow
+            lineColor = d3.scaleLinear().domain([1,highestVelocity]).range(["#FF0000","#800000"]); //bounding the color of curves based on wind velocity from pure red to maroon
+        //looping through the groups based on keys
+        for(var i=0;i<data.length;i++){
+
+          var wind_flow_data = data[i]["values"], //values of the wind flow
+              station_id = data[i]["key"],//value of the key for that station to station wind flow
+              streamLineData={id:station_id,active:1,value:[]}; //object for storing the value of lines in that particular wind flow between stations
+
+          stationIDS.push(station_id); //adding stations id so that they can be used later on for interaction and animation
+    
+          var stations=[];
+          //putting the source station and destination statino data to show them as circles
+          stations.push({name:wind_flow_data[0]["Source"],lat:+wind_flow_data[0]["S_Lat"],lon:+wind_flow_data[0]["S_Lon"]});
+          stations.push({name:wind_flow_data[0]["Destination"],lat:+wind_flow_data[0]["D_Lat"],lon:+wind_flow_data[0]["D_Lon"]})
+
+        
+          //adding stations as circles and adding on click event for those stations
+          var st_locations = g.selectAll("image."+station_id).data(stations).enter().append("image").attr("class",station_id)
+              .attr("id",function(d,i){return d.name;}).attr("active",1)
+              .attr("xlink:href", "/Users/Uzwal/Desktop/station.png")
+              .attr("x",function(d,i){
+                return projection([d.lon,d.lat])[0]-10;
+              })
+              .attr("y",function(d,i){
+                return projection([d.lon,d.lat])[1];
+              })
+              .attr("width",20)
+              .attr("height",20);
+              //show station name in text in case mouse is hovered
+            st_locations.on("mouseover",function(d,i){
+                topSvg.append("text").style("z-index",10).attr("dy","2em").attr("transform","translate("+d3.mouse(this)+")").text(d.name);
+              }).on("mouseout",function(d,i){
+                topSvg.selectAll("text").remove();
+              }).on("click",function(){
+                var selectedElement = d3.select(this),
+                    isActive = selectedElement.attr("active"),
+                    newOpacity = (isActive==1)?0:1,
+                    subString = selectedElement.attr("id"),
+                    totalSelection=[];
+                    //getting all the stream line class where this station is a source of wind
+                    for(var i=0;i<stationIDS.length;i++){
+                      var temp = stationIDS[i].substring(0,stationIDS[i].indexOf("to")-1);
+                      if(temp==subString){totalSelection.push(stationIDS[i]);}
+                    }
+                    
+                    for(var j=0;j<totalSelection.length;j++){
+                        var streamLineID = totalSelection[j]; 
+                          for(var i=0;i<totalPathData.length;i++){
+                            if(totalPathData[i].id==streamLineID){
+                              totalPathData[i].active=newOpacity;
+                              g.selectAll("line."+streamLineID).attr("active",newOpacity);
+                            }
+                          }
+                      }
+                      cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
+                      allFrames=null;
+                      allFrames={}; //empyting all the caches frames to create new ones after the event
+                      
+                      requestID = requestAnimationFrame(animate); //start the animation again
+
+                    g.selectAll("image#"+subString).attr("active",newOpacity);
+              });
+          st_locations.exit().remove();
+
+        
+        //this object gives the maximum and minimum bound of both x and y coordinates of current projection
+        var dimension = mercatorBounds(projection,maxlat),
+        minimumX = dimension[0][0],
+        maximumX = dimension[1][0];
+
+        
+        wind_flow_data.forEach(function(d,i){
+          var temp,x1,
+              x0 = projection([+d["Wind_Lon"],+d["Wind_Lat"]]);   
+          //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
+          if(i==wind_flow_data.length-1){x1=x0}
+          else{ x1 = projection([+wind_flow_data[i+1]["Wind_Lon"],+wind_flow_data[i+1]["Wind_Lat"]])};
+          //checking if start point and obj.end point of curves are on right direction of wind flow
+          if(x1==x0){  
+          }else{ 
+          temp = tweenTheCurves(d,wind_flow_data[i+1],x0,x1,minimumX,maximumX); 
+             // drawing the curves based on the whether they have parts of not
+              for(var x=0;x<temp.length;x++){
+                  var randomParticlesAroundEachLine = createRandomParticles(temp[x],i);
+
+                      for(var x=0;x<randomParticlesAroundEachLine.length;x++){
+                        var temp = randomParticlesAroundEachLine[x],
+                          startPoint = [Math.ceil(temp[0][0]),Math.ceil(temp[0][1])],
+                          endPoint = [Math.ceil(temp[1][0]),Math.ceil(temp[1][1])],
+                          angle = Math.atan2(endPoint[1]-startPoint[1],endPoint[0]-startPoint[0]),
+                          pathInterpolator = d3.interpolateArray(startPoint,endPoint),
+                          velocity = (+wind_flow_data[i+1]["Wind_Velocity"]).toFixed(2),  
+                          strokeColor = lineColor(velocity),
+                          arrow_size = arrowSize(wind_flow_data.length),
+                          moveAngle = 30 * (Math.PI/180),
+                          beforeAngle = (Math.PI+angle)-moveAngle,
+                          afterAngle = (Math.PI+angle)+moveAngle,
+                          hypo = Math.abs(arrow_size/Math.cos(moveAngle));
+
+                          temp.velocity = velocity; //adding end velocity of the line for hover over event
+
+                        var obj = {x0:+startPoint[0],y0:+startPoint[1],x1:+endPoint[0],y1:+endPoint[1],interpolator:pathInterpolator,beforeAngle:beforeAngle,afterAngle:afterAngle,h:hypo,color:strokeColor};
+
+                        streamLineData.value.push(obj); //adding each line data into one container for one flow
+
+                        //appends line as DOM objects so that they can be used to give velocity on hover over
+                        g.append("line").attr("x1",temp[0][0]).attr("y1",temp[0][1]).attr("x2",temp[1][0]).attr("y2",temp[1][1])
+                        .attr("class",station_id)
+                        .attr("active",1)
+                        .style("stroke-width",2)
+                        .style("stroke","white")
+                        .style("opacity",0)
+                        .on("click",function(d,i){ 
+                            if((d3.select(this).attr("active"))==1){
+                              topSvg.append("text").attr("class","velocity").attr("transform","translate("+d3.mouse(this)+")").attr("dy","2em")
+                              .text(temp.velocity+"m/s");
+                            }
+                          }).on("mouseout",function(){
+                          topSvg.selectAll("text").remove();
+                         });
+
+                      } 
+              }
+          }                   
+      });
+
+      totalPathData.push(streamLineData); //adding each stream line flow between two stations to total flows
+
+
+
+    //this function creates new parts of a curve based on their location in the new projection
+    function tweenTheCurves(a,b,x0,x1,minX,maxX){
+      var result=[],
+          temp=[];
+
+     if(+b["Wind_Lon"]>=+a["Wind_Lon"] && x1[0]<x0[0]){
+        var middlePoint = getTheConnectionPoint(x0,x1,"r",minX,maxX),
+            connectingPoint = [maxX,middlePoint],
+            nextOne=[minX,middlePoint];
+
+        temp.push(x0,connectingPoint);
+        result.push(temp);
+        temp=[];
+        temp.push(nextOne,x1);
+        result.push(temp);
+     }else if(+b["Wind_Lon"]<+a["Wind_Lon"] && x1[0]>=x0[0]){
+        var middlePoint = getTheConnectionPoint(x0,x1,"l",minX,maxX),
+              connectingPoint = [minX,middlePoint],
+              nextOne=[maxX,middlePoint];
+
+          temp.push(x0,connectingPoint);
+          result.push(temp);
+          temp=[];
+          temp.push(nextOne,x1);
+          result.push(temp);
+     }else{
+      temp.push(x0,x1);
+      result.push(temp);
+     }
+
+     return result;
+    }
+
+    //this function gets the exact location where the point is connected to two different sections
+    function getTheConnectionPoint(x0,x1,flag,minX,maxX){
+      //this part takes care of condition when start point is in right side of screen and obj.end point at left side while panning
+      if(flag =="r"){
+      var base = Math.abs(x0[0]-maxX)+ Math.abs(minX-x1[0]),
+          height = x0[1]-x1[1],
+          tanRatio = height/base;
+      return x0[1]- (Math.abs(x0[0]-maxX) * tanRatio);
+      }//this part takes care of condition when start point is left side of screen and obj.end point at right side while panning
+      else if(flag=="l"){
+        var base = Math.abs(x0[0]-minX)+Math.abs(maxX-x1[0]),
+            height = x0[1]-x1[1],
+            tanRatio = height/base;
+        return x1[1] + (Math.abs(x1[0]-maxX)* tanRatio);
+      }
+    }
+  
+    //creates random particles that are parallel and inside the max interpolation bound on each side
+    function createRandomParticles(value,index){
+    
+      var run = value[1][0]-value[0][0],
+          rise = value[0][1]-value[1][1],
+          tanRatio = rise/run,
+          yMax = value[0][1] + interpolationWidthBound,
+          yMin = value[0][1] - interpolationWidthBound,
+          xMax = value[0][0] + interpolationWidthBound,
+          xMin = value[0][0] - interpolationWidthBound,
+          particles=[];
+      
+
+      //when the slope of line is greater than 45 degrees
+        if(Math.abs(Math.atan(tanRatio)*(180/Math.PI)) > 45){
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][0]+offset);i<=xMax;i+=offset){
+                    var temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+               
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][0]-offset);i>=xMin;i-=offset){
+                    var temp = plotTheLinesForX(i,tanRatio,value[0][1],value[1][1]);
+                    particles.push(temp);
+                    if(index==0){
+                       particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                     }
+              }      
+        }
+        else{
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][1]-offset);i>=yMin;i-=offset){
+                    var temp =  plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+               
+              //this randomly creates all the lines on the right
+              for(var i = (value[0][1]+offset);i<=yMax;i+=offset){
+                    var temp = plotTheLinesForY(i,tanRatio,value[0][0],value[1][0]);
+                    particles.push(temp);
+                    if(index==0){
+                      particles.push([[value[0][0],value[0][1]],[temp[0][0],temp[0][1]]]);
+                    }
+              }
+        }
+
+      //adding the actual line 
+      particles.push(value);
+
+      return particles;
+
+    }
+
+    //find the destination coordinate of randomly plotted points
+    function plotTheLinesForY(y1,ratio,x1,x2){
+      var temp=[],
+          y2 = y1 - (ratio * (x2-x1)); 
+      temp.push([x1,y1]);
+      temp.push([x2,y2]);
+      return temp;
+    }
+    //find the destination coordinate of randomly plotted points
+    function plotTheLinesForX(x1,ratio,y1,y2){
+      var temp=[],
+          x2 = ((y1-y2)/ratio)+ x1;
+      temp.push([x1,y1]);
+      temp.push([x2,y2]);
+      return temp;
+    }
+
+
+  }
+
+//   var canvasLeftX=1920,canvasLeftY=1080,canvasRightX=0,canvasRightY=0;
+
+//   for(var i=0;i<totalPathData.length;i++){
+//     var flow = totalPathData[i].value;
+
+//         for(var j=0;j<flow.length;j++){
+//             var obj = flow[j];
+//             var smallX,bigX,smallY,bigY;
+//             if(obj.x0<=obj.x1){
+//               smallX = obj.x0;
+//               bigX = obj.x1;
+//             }else{
+//               smallX = obj.x1;
+//               bigX = obj.x0;
+//             }
+
+//             if(obj.y0<=obj.y1){
+//               smallY = obj.y0;
+//               bigY = obj.y1;
+//             }else{
+//               smallY = obj.y1;
+//               bigY = obj.y0;
+//             }
+
+//             if(smallX<canvasLeftX){
+//               canvasLeftX = smallX;
+//             }
+//             if(bigX>canvasRightX){
+//               canvasRightX = bigX
+//             }
+//             if(smallY<canvasLeftY){
+//               canvasLeftY = smallY;
+//             }
+//             if(bigY>canvasRightY){
+//               canvasRightY=bigY;
+//             }
+            
+//         }
+//   }
+
+// function findNewCanvasBoundedXCoordinate(input){
+//     return (canvasWidth- (canvasRightX-input));
+// }
+
+// function findNewCanvasBoundedYCoordinate(input){
+//     return (canvasHeight- (canvasRightY-input));
+// }
+
+//new optimal canvas height and width required according to the data
+// var canvasWidth = (canvasRightX-canvasLeftX),
+//     canvasHeight = (canvasRightY-canvasLeftY);
+
+//defining canvas and setting the bounding box and properties for canvas
+console.log(document.getElementsByTagName('*').length);
+
+  
+var frame = 0; //frame counter total equals 60
+    requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
+
+ //this function animates the streamline by moving the curves with arrow heads on it
+ function animate(){
+  frame++;
+  if(frame>60){
+    frame = 1;
+  }
+  var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
+      offScreenContext = offScreenCanvas.getContext('2d'); 
+      offScreenCanvas.width = width;// match the off-screen canvas dimensions with that the main drawing Canvas
+      offScreenCanvas.height = height;
+
+  var t = (frame*16)/1000;
+  requestID = requestAnimationFrame(animate); //calling another animation frame to draw
+
+  canvas.clearRect(0,0,width,height);
+  if(allFrames[frame]==undefined){
+      canvas.beginPath();
+      offScreenContext.beginPath();
+      //drawing the lines
+      for(var i=0;i<totalPathData.length;i++){
+        var flow = totalPathData[i];
+        //drawing only those flows which are active
+        if(flow.active==1){
+          for(var j=0;j<flow.value.length;j++){
+            var obj = flow.value[j],
+                arrowPoint = obj.interpolator(t),
+                x1= Math.ceil(+arrowPoint[0]),
+                y1 = Math.ceil(+arrowPoint[1]);
+                obj.x1 = x1;
+                obj.y1 = y1;
+
+
+                canvas.moveTo(obj.x0,obj.y0);
+                canvas.lineTo(x1,y1); 
+                canvas.strokeStyle = obj.color;
+           
+                offScreenContext.moveTo(obj.x0,obj.y0);
+                offScreenContext.lineTo(x1,y1);  
+                offScreenContext.strokeStyle = obj.color;
+          } 
+        } 
+      }
+               
+                canvas.stroke();
+                offScreenContext.stroke();
+
+      createArrows(offScreenContext); //this function creates arrow heads on the top of the animating lines
+      allFrames[frame] = offScreenCanvas;
+  }else{
+      canvas.drawImage(allFrames[frame],0,0);
+  }
+  
+ }
+
+ //this function draws arrow heads on the top of the stream lines
+ function createArrows(offScreenContext){
+
+    //for drawing arrow heads above lines
+     for(var i=0;i<totalPathData.length;i++){
+      var flow = totalPathData[i];
+      //drawing only those flows which are active
+      if(flow.active==1){
+
+        for(var j=0;j<flow.value.length;j++){
+            var obj = flow.value[j],
+                leftX = Math.ceil(obj.x1+Math.cos(obj.beforeAngle)*obj.h),
+                leftY = Math.ceil(obj.y1+Math.sin(obj.beforeAngle)*obj.h),
+                rightX = Math.ceil(obj.x1+Math.cos(obj.afterAngle)*obj.h),
+                rightY = Math.ceil(obj.y1+Math.sin(obj.afterAngle)*obj.h);
+
+                canvas.moveTo(obj.x1,obj.y1);
+                canvas.lineTo(leftX,leftY);
+                canvas.lineTo(rightX,rightY);
+                canvas.lineTo(obj.x1,obj.y1);     
+
+                offScreenContext.moveTo(obj.x1,obj.y1);
+                offScreenContext.lineTo(leftX,leftY);
+                offScreenContext.lineTo(rightX,rightY);
+                offScreenContext.lineTo(obj.x1,obj.y1); 
+          }  
+        }   
+      }    
+                canvas.fillStyle = "#F0FFFF";
+                canvas.fill();
+
+                offScreenContext.fillStyle = "#F0FFFF";
+                offScreenContext.fill();
+
+ }
+
+
+      
+  });
+
+
+}
+
+    
+
+});
+
+      //calculates the angle of rotation for the arrow for d3 symbol
+      // function findRotateAngle(x1,y1,x2,y2){
+      //   var angle = Math.atan2(y1-y2,x2-x1)*(180/Math.PI);
+      //   if(angle<0){
+      //     return (Math.abs(angle)+90);
+      //   }else if(angle>=0){
+      //     return (90-angle);
+      //   }
+      // }
+
+    </script>
+  </body>
+  </html>
+
+

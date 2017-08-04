@@ -238,7 +238,7 @@ svg#topSvg{
                     img.src = url[frame];
                   } else {
                     canvas.clearRect(0, 0, width, height);
-                    canvas.drawImage(currentStateImages[frame], 0, 0, width, height);
+                    canvas.drawImage(currentStateImages[frame], 0, 0);
 
                   }
                   frame++;

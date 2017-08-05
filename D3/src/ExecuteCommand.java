@@ -8,12 +8,12 @@ import java.io.IOException;
 @SuppressWarnings(value = "unused")
 public class ExecuteCommand implements Runnable {
 	private String[] psexecSyntax;
-	private int connectionID;
+	private String threadID;
 
-	public ExecuteCommand(String[] args, int index) {
+	public ExecuteCommand(String[] args, String index) {
 		// TODO Auto-generated constructor stub
 		this.psexecSyntax = args;
-		this.connectionID = index;
+		this.threadID = index;
 	}
 
 	@Override
@@ -28,6 +28,10 @@ public class ExecuteCommand implements Runnable {
 			}
 		}
 
+	}
+	
+	public String getThreadName(){
+		return threadID;
 	}
 
 }

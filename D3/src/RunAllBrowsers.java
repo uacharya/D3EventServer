@@ -24,15 +24,16 @@ public class RunAllBrowsers {
 
 		long startTime = System.currentTimeMillis();
 		for (int x = 0; x < numberOfBrowsers; x++) {
+			//passing monitor index and d3 page location to create a batch file that opens d3 page from command line
 			createBatchFile(x, args[0]);
 		}
 		//this is the index of node starting from 0 to 2 from the top
 		for (int i = 0; i < nodesCommand.length; i++) {
-			for (int j = 0; j < nodesCommand.length; j++) { //the index of monitor
+			for (int j = 0; j < numberOfBrowsers; j++) { //the index of monitor
 				//creates command to run in command line using psExec
-				String[] commandLineArgs = giveFullCommandLineArgs(j, nodesCommand[i].split(" "));
-				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, j);
-				Thread node = new Thread(execute);
+				String[] commandLineArgs = giveFullCommandLineArgs(j, nodesCommand[i].split("\\s+"));
+				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, String.format("%s%s",i,j));
+				Thread node = new Thread(execute,execute.getThreadName());
 				node.start();
 			}
 			try {
@@ -102,25 +103,16 @@ public class RunAllBrowsers {
 		String[] chromePositionArgs = new String[commandlineargs.length + 1];
 		switch (x) {
 		case 0:
-			for (int i = 0; i < commandlineargs.length; i++) {
-				chromePositionArgs[i] = commandlineargs[i];
-			}
-
+			System.arraycopy(commandlineargs, 0, chromePositionArgs, 0,commandlineargs.length);
 			chromePositionArgs[chromePositionArgs.length - 1] = "c:\\BrowserLaunchFiles\\Run_File1.bat";
 			break;
 		case 1:
-			for (int i = 0; i < commandlineargs.length; i++) {
-				chromePositionArgs[i] = commandlineargs[i];
-			}
-
+			System.arraycopy(commandlineargs, 0, chromePositionArgs, 0,commandlineargs.length);
 			chromePositionArgs[chromePositionArgs.length - 1] = "c:\\BrowserLaunchFiles\\Run_File2.bat";
 			break;
 
 		case 2:
-			for (int i = 0; i < commandlineargs.length; i++) {
-				chromePositionArgs[i] = commandlineargs[i];
-			}
-
+			System.arraycopy(commandlineargs, 0, chromePositionArgs, 0,commandlineargs.length);
 			chromePositionArgs[chromePositionArgs.length - 1] = "c:\\BrowserLaunchFiles\\Run_File3.bat";
 			break;
 		}
@@ -129,3 +121,6 @@ public class RunAllBrowsers {
 
 	}
 }
+//for (int i = 0; i < commandlineargs.length; i++) {
+//chromePositionArgs[i] = commandlineargs[i];
+//}

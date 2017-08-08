@@ -12,7 +12,7 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 
-@WebFilter("/bilevelserver")
+@WebFilter(value="/bilevelserver")
 public class WebSocketFilter implements Filter {
 
 	@Override
@@ -21,8 +21,8 @@ public class WebSocketFilter implements Filter {
 		HttpServletRequest httpServletRequest = (HttpServletRequest) request;
 
 		final Map<String, String[]> parameters = new HashMap<String, String[]>();
-		parameters.put("IPAddress", new String[] { httpServletRequest.getRemoteAddr() });
-
+		parameters.put("IP", new String[] { httpServletRequest.getRemoteAddr() });
+		
 		// wrapping the request object inside request wrapper
 		HttpServletRequestWrapper requestWrapper = new HttpServletRequestWrapper(httpServletRequest) {
 			@Override
@@ -33,7 +33,6 @@ public class WebSocketFilter implements Filter {
 		// passing the request and response object to next chain in filter until
 		// it reaches server end point
 		chain.doFilter(requestWrapper, response);
-
 	}
 
 	@Override

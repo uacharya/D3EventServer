@@ -40,7 +40,7 @@ public class RunAllBrowsers {
 		this.filePath = "";
 	}
 
-	private synchronized void createGUI() {
+	private void createGUI() {
 		final JFrame frame = new JFrame("File Chooser");
 		frame.setSize(800, 200);
 		frame.setResizable(false);
@@ -73,8 +73,11 @@ public class RunAllBrowsers {
 				if (i == JFileChooser.APPROVE_OPTION) {
 					String path = fileChooser.getSelectedFile().getAbsolutePath();
 					System.out.println(path);
-					filePath = path.substring(path.lastIndexOf("\\") + 1, path.length());
-					System.out.println(filePath);
+					synchronized (RunAllBrowsers.this) {
+						filePath = path.substring(path.lastIndexOf("\\") + 1, path.length());
+						RunAllBrowsers.this.notify();
+
+					}
 
 				}
 
@@ -90,9 +93,8 @@ public class RunAllBrowsers {
 	public static void main(String[] args) {
 
 		long startTime = System.currentTimeMillis();
-
-		final RunAllBrowsers runner = new RunAllBrowsers(); // an object whose one of the method creates GUI and another variable gives file path
-
+		/* object to create gui and get file path from the user*/
+		final RunAllBrowsers runner = new RunAllBrowsers(); 
 		// opening a GUI to get the file location
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
@@ -100,20 +102,23 @@ public class RunAllBrowsers {
 				runner.createGUI();
 			}
 		});
+		
 
-		while (runner.filePath == "") {
+		if (runner.filePath == "") {
 			// just running infinitely unless user selects a file
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			synchronized (runner) {
+				try {
+					runner.wait();
+					System.out.println("file path found");
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+				}
+
 			}
 		}
 
 		for (int x = 0; x < numberOfBrowsers; x++) {
-			// passing monitor index and d3 page location to create a batch file
-			// that opens d3 page from command line
+			// passing monitor index and d3 page location to create a batch file that opens d3 page from command line
 			createBatchFile(x, runner.filePath);
 		}
 		// this is the index of node starting from 0 to 2 from the top

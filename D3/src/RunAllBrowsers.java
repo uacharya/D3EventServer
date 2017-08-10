@@ -31,20 +31,24 @@ import javax.swing.SwingUtilities;
  */
 public class RunAllBrowsers {
 	// command line for opening browsers in each node with required credentials
-	private static final String[] nodesCommand = { "c:\\psexec.exe -i \\\\wall1 -u walluser -p Spring2015! -c",
-			"c:\\psexec.exe -i \\\\wall2 -u walluser -p Spring2015! -c", "c:\\psexec.exe -i \\\\wall3" };
+	private static final String[] nodesCommand = { "c:\\psexec.exe -i \\\\10.29.2.109 -u walluser -p Spring2015! -c",
+			"c:\\psexec.exe -i \\\\10.29.2.184 -u walluser -p Spring2015! -c", "c:\\psexec.exe -i \\\\wall3" };
 	private static final int numberOfBrowsers = 3;
-	private String filePath;
+	private String filePath; // file path location where a d3 page user wanna
+								// open is
 
 	private RunAllBrowsers() {
 		this.filePath = "";
 	}
 
+	/**
+	 * This method runs in event dispatch thread to create graphical elements
+	 */
 	private void createGUI() {
 		final JFrame frame = new JFrame("File Chooser");
 		frame.setSize(800, 200);
 		frame.setResizable(false);
-		frame.setLocation(-500, 0);
+		frame.setLocation(4385, 540);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		Container container = frame.getContentPane();
@@ -57,7 +61,6 @@ public class RunAllBrowsers {
 		button.setBackground(new Color(205, 208, 215));
 		button.setForeground(Color.RED);
 		button.setOpaque(true);
-		button.setBorderPainted(false);
 		button.setFont(new Font("Georgia", Font.PLAIN, 40));
 		button.setPreferredSize(new Dimension(400, 100));
 
@@ -65,14 +68,14 @@ public class RunAllBrowsers {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JFileChooser fileChooser = new JFileChooser();
-				fileChooser.setPreferredSize(new Dimension(1000, 500));
+				JFileChooser fileChooser = new JFileChooser(
+						"C:\\Users\\walluser\\javaWorkspace\\D3EventServer\\D3\\WebContent");
+				fileChooser.setPreferredSize(new Dimension(1000, 1000));
 				fileChooser.setDialogTitle("Choose a file to display");
 				int i = fileChooser.showOpenDialog(frame);
 
 				if (i == JFileChooser.APPROVE_OPTION) {
 					String path = fileChooser.getSelectedFile().getAbsolutePath();
-					System.out.println(path);
 					synchronized (RunAllBrowsers.this) {
 						filePath = path.substring(path.lastIndexOf("\\") + 1, path.length());
 						RunAllBrowsers.this.notify();
@@ -90,11 +93,14 @@ public class RunAllBrowsers {
 
 	}
 
+	/**
+	 * This main method is responsible for opening d3 page in 9 browsers using
+	 * command line tool to remotely initiate a chrome process in all 3 nodes
+	 * @param args
+	 */
 	public static void main(String[] args) {
-
-		long startTime = System.currentTimeMillis();
-		/* object to create gui and get file path from the user*/
-		final RunAllBrowsers runner = new RunAllBrowsers(); 
+		/* object to create gui and get file path from the user */
+		final RunAllBrowsers runner = new RunAllBrowsers();
 		// opening a GUI to get the file location
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
@@ -102,7 +108,6 @@ public class RunAllBrowsers {
 				runner.createGUI();
 			}
 		});
-		
 
 		if (runner.filePath == "") {
 			// just running infinitely unless user selects a file
@@ -118,29 +123,28 @@ public class RunAllBrowsers {
 		}
 
 		for (int x = 0; x < numberOfBrowsers; x++) {
-			// passing monitor index and d3 page location to create a batch file that opens d3 page from command line
+			// passing monitor index and d3 page location to create a batch file
+			// that opens d3 page from command line
 			createBatchFile(x, runner.filePath);
 		}
 		// this is the index of node starting from 0 to 2 from the top
 		for (int i = 0; i < nodesCommand.length; i++) {
 			for (int j = 0; j < numberOfBrowsers; j++) { // the index of monitor
 				// creates command to run in command line using psExec
-				String[] commandLineArgs = giveFullCommandLineArgs(j, nodesCommand[i].split("\\s+"));
-				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, String.format("%s%s", i, j));
+				String[] commandLineArgs = giveFullCommandLineArgs(i, nodesCommand[j].split("\\s+"));
+				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, String.format("%s%s", j, i));
 				Thread node = new Thread(execute, execute.getThreadName());
 				node.start();
+				try {
+					Thread.sleep(80);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
-			try {
-				Thread.sleep(40);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+
 		}
 
-		long endTime = System.currentTimeMillis();
-
-		System.out.printf("Execution time %d", endTime - startTime);
 		System.exit(0);
 
 	}
@@ -226,6 +230,3 @@ public class RunAllBrowsers {
 
 	}
 }
-// for (int i = 0; i < commandlineargs.length; i++) {
-// chromePositionArgs[i] = commandlineargs[i];
-// }

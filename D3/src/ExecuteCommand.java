@@ -29,8 +29,8 @@ public class ExecuteCommand implements Runnable {
 		}
 
 	}
-	
-	public String getThreadName(){
+
+	public String getThreadName() {
 		return threadID;
 	}
 

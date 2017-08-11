@@ -4,7 +4,7 @@
 <title></title>
 <style>
 body{
-    overflow:hidden;
+/*    overflow:hidden;*/
 }
 
 path {
@@ -22,17 +22,16 @@ circle {
 <script type="text/javascript">
 var zoom;
 
-var webSocket = new WebSocket("ws://192.168.10.3:8080/D3/bilevelserver");
+var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
-webSocket.onopen = function(){
-    webSocket.send("dimensionFor"+window.screenX);
-}
+ webSocket.onopen = function(){
+        webSocket.send("X="+window.screenX);
+    }
 
 webSocket.onmessage = function(dimension){
     //getting the parameters from server to display part of animation
     if(dimension.data.length<100){
-        var obj = {Title:document.title,url:dimension.data};
-        window.history.replaceState(obj,obj.Title,obj.url);      
+        window.history.replaceState({},document.Title,dimension.data);      
     }else{ //else getting the node clicked for animation
         var response = JSON.parse(dimension.data);
     //checking if single value was send for zooming in or multiple values for zooming out
@@ -81,30 +80,12 @@ webSocket.onerror= function(){
     <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
     <script>
 
-    var parameters,
-        clipDimensions=[];
+    var createGraphics = function(){
+    var clipDimensions = window.location.search.substring(1).split(",");
+        clipDimensions.push(11520);
+        clipDimensions.push(6480);
 
-    setTimeout(function(){
-      
-    //this function for returning viewBox dimensions
-    (function(){
-        //getting parameters from the url passed
-        var getURLParam = function(variable){ 
-            var params = window.location.search.substring(1).split("&");
-
-            for(var i=0;i<params.length;i++){
-                var check = params[i].split("=");
-                if(decodeURIComponent(check[0])===variable){
-                    return decodeURIComponent(check[1]);
-                }
-            }
-        }
-
-        clipDimensions.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
-
-        parameters = clipDimensions.join(" ");
-    })();
-
+    var parameters = clipDimensions.join(" ");
 
    var margin = {top: 3248, right: 5760, bottom: 3248, left: 5760},
     radius = 3000;
@@ -337,8 +318,9 @@ function updateArc(d) {
 }
 
 d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
-},1000);
+}
 
+createGraphics();
 
 </script>
 

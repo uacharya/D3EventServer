@@ -48,16 +48,16 @@
     <script type="text/javascript">
     var groupedMode, stackedMode;
 
-    var webSocket = new WebSocket("ws://192.168.10.3:8080/D3/bilevelserver");
+    var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
     webSocket.onopen = function(){
-        webSocket.send("dimensionFor"+window.screenX);
+        webSocket.send("X="+window.screenX);
     }
 
     webSocket.onmessage = function(dimension){
+
         if(dimension.data!="grouped"&&dimension.data!="stacked"){
-            var obj = {Title:document.title,url:dimension.data};
-            window.history.replaceState(obj,obj.Title,obj.url);
+            window.history.replaceState({},document.Title,dimension.data);
         }else if(dimension.data === "grouped"){
             groupedMode();
         }else if(dimension.data === "stacked"){
@@ -82,37 +82,11 @@
     </div>
     <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
     <script>
-    var parameters,
-        clipDimensions=[];
-
-    //setting time delay so that the svg gets viewBox parameters from the url before loading the entire body
-    setTimeout(function(){
-        d3.csv("http://192.168.10.3:8085/dataSetForBarChart.csv",function(data){
+    var parameters,clipDimensions=[];    
+    //calling this function later after window location string has been set according to required format
+    var createGraphics = function(){
+        d3.csv("http://10.29.3.2:8085/dataSetForBarChart.csv",function(data){
             var dataSet = data;
-
-        (function(){
-            //getting parameters from the url passed
-            var getURLParam = function(variable){ 
-                var params = window.location.search.substring(1).split("&");
-
-                for(var i=0;i<params.length;i++){
-                    var check = params[i].split("=");
-                    if(decodeURIComponent(check[0])===variable){
-                        return decodeURIComponent(check[1]);
-                    }
-                }
-            }
-
-            clipDimensions.push(getURLParam('x'),getURLParam('y'),getURLParam('width'),getURLParam('height'));
-
-            if(clipDimensions[0]==3840 && clipDimensions[1]==0){
-                document.getElementById("buttons").style.visibility="visible";
-            }
-
-            parameters = clipDimensions.join(" ");
-        })();
-
-
     var i = 0;
     var n = 6, //layers
             m = 200, //sample size
@@ -259,7 +233,15 @@
                 });
             }
         });
-},800);
+
+        clipDimensions = window.location.search.substring(1).split(",");
+        clipDimensions.push(11520);
+        clipDimensions.push(6480);
+
+        parameters = clipDimensions.join(" ");
+}
+
+    createGraphics();
 </script>
 
 

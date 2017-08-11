@@ -55,7 +55,7 @@ public class Bilevel {
 		System.out.println("recieved event from the client is " + message);
 		// send dimension if dimension coordinates are requested for browser
 		// belonging to screen in particular node
-		if (message.contains("dimensionFor")) {
+		if (message.contains("X=")) {
 			sendDisplayDimension(session, IPAddress, message);
 		} else {
 			sendMessageToAll(message);// sending events to all
@@ -75,7 +75,12 @@ public class Bilevel {
 		synchronized (allSessions) {
 			for (Session ssn : allSessions) {
 				if (ssn.isOpen()) {
-					ssn.getAsyncRemote().sendText(message); //before synchronously message was sent blocking until message was sent
+					try {
+						ssn.getBasicRemote().sendText(message);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} //before synchronously message was sent blocking until message was sent
 				}
 			}
 		}
@@ -118,48 +123,36 @@ public class Bilevel {
 	 */
 	private String determineParametersToReturn(String IPAddress, String monitorLocation) {
 		String dimension = "";
-		if (IPAddress.equalsIgnoreCase("192.168.10.3")) {
-			int browserLocation = Integer.parseInt(monitorLocation.split("For")[1]);
+		if (IPAddress.equalsIgnoreCase("10.29.3.2")) {
+			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
 			if (browserLocation >= 0 && browserLocation < 3840) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x=0" + "&y="
-						+ (int) Math.ceil((height / 3) * 2);
+				dimension = "?0,"+ (int) Math.ceil((height / 3) * 2);
 			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) Math.ceil(width / 3) + "&y=" + (int) Math.ceil((height / 3) * 2);
+				dimension = "?"+(int) Math.ceil(width / 3) +","+ (int) Math.ceil((height / 3) * 2);
 			} else if (browserLocation >= 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) (int) Math.ceil((width / 3) * 2) + "&y=" + (int) Math.ceil((height / 3) * 2);
+				dimension = "?"+(int) Math.ceil((width / 3) * 2) +","+ (int) Math.ceil((height / 3) * 2);
+			}
+		} else if (IPAddress.equalsIgnoreCase("10.29.2.184")) {
+			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
+			if (browserLocation >= 0 && browserLocation < 3840) {
+				dimension = "?0,"+ (int) Math.ceil(height / 3);
+			} else if (browserLocation >= 3840 && browserLocation < 7680) {
+				dimension = "?"+(int) Math.ceil(width / 3)+","+ (int) Math.ceil(height / 3);
+			} else if (browserLocation >= 7680) {
+				dimension = "?"+(int) Math.ceil((width / 3) * 2) +","+ (int) Math.ceil(height / 3);
 			}
 
-			return dimension;
-		} else if (IPAddress.equalsIgnoreCase("192.168.10.4")) {
-			int browserLocation = Integer.parseInt(monitorLocation.split("For")[1]);
+		} else if (IPAddress.equalsIgnoreCase("10.29.2.109")){
+			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
 			if (browserLocation >= 0 && browserLocation < 3840) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x=0" + "&y="
-						+ (int) Math.ceil(height / 3);
+				dimension = "?0,0";
 			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) Math.ceil(width / 3) + "&y=" + (int) Math.ceil(height / 3);
+				dimension = "?"+(int) Math.ceil(width / 3)+",0";
 			} else if (browserLocation >= 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) Math.ceil((width / 3) * 2) + "&y=" + (int) Math.ceil(height / 3);
+				dimension = "?"+(int) Math.ceil((width / 3) * 2)+",0";
 			}
-
-			return dimension;
-		} else {
-			int browserLocation = Integer.parseInt(monitorLocation.split("For")[1]);
-			if (browserLocation >= 0 && browserLocation < 3840) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x=0" + "&y=0";
-			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) Math.ceil(width / 3) + "&y=0";
-			} else if (browserLocation >= 7680) {
-				dimension = "?height=" + (int) height + "&width=" + (int) Math.ceil(width / 3) + "&x="
-						+ (int) Math.ceil((width / 3) * 2) + "&y=0";
-			}
-
-			return dimension;
 		}
+		return dimension;
 	}
 
 	/**

@@ -158,8 +158,10 @@ svg#topSvg{
 
             var pathData = response['path'],
                 stationData = response['stations'],
-                windFlowIDS = [],
-                ID;
+                windFlowIDS = [],allowClick=false, //variable used to not let clicking event before first complete flow
+                requestID, //variable to store request ID of animation
+                lastSelected = undefined; //holding the flows for latest interaction station
+                
 
             //adding stations as image and adding on click event for those stations
             var st_locations = g.selectAll('image').data(stationData).enter().append('image').attr('id', function(d, i) {
@@ -177,34 +179,43 @@ svg#topSvg{
               }).on("mouseout", function(d, i) {
                 topSvg.selectAll("text").remove();
               }).on("click", function() {
-                var selectedElement = d3.select(this),
-                  isActive = selectedElement.attr("active"),
-                  newOpacity = (isActive == 1) ? 0 : 1,
-                  subString = selectedElement.attr("id"),
-                  totalSelection = [];
-                //getting all the stream line class where this station is a source of wind
-                for (var i = 0; i < windFlowIDS.length; i++) {
-                  var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
-                  if (temp == subString) {
-                    totalSelection.push(i);
+
+                  if(allowClick==true){
+                    var selectedElement = d3.select(this),
+                      isActive = selectedElement.attr("active"),
+                      newOpacity = (isActive == 1) ? 0 : 1,
+                      subString = selectedElement.attr("id"),
+                      totalSelection = [];
+                    //getting all the stream line class where this station is a source of wind
+                    for (var i = 0; i < windFlowIDS.length; i++) {
+                      var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
+                      if (temp == subString) {
+                        totalSelection.push(i);
+                      }
+                    }
+
+                  for (var j = 0; j < totalSelection.length; j++) {
+                    var index = totalSelection[j],
+                      streamLineID = windFlowIDS[index];
+
+                    pathData[index].active = newOpacity;
+                    g.selectAll("line." + streamLineID).attr("active", newOpacity);
+
                   }
+
+                  g.selectAll("image#" + subString).attr("active", newOpacity);
+
+                    if(newOpacity==1){
+                      lastSelected=totalSelection;
+                    }
+
+                    reCreateImages(); //creating new images for animation
+
+                    cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
+                    requestID = requestAnimationFrame(draw); //start the animation again
+                }else{
+                    console.log("interaction not allowed yet");
                 }
-
-                for (var j = 0; j < totalSelection.length; j++) {
-                  var index = totalSelection[j],
-                    streamLineID = windFlowIDS[index];
-
-                  pathData[index].active = newOpacity;
-                  g.selectAll("line." + streamLineID).attr("active", newOpacity);
-
-                }
-
-                reCreateImages(); //creating new images for the animation
-
-                cancelAnimationFrame(ID); //stopping the old animation to remove some stream lines
-                ID = requestAnimationFrame(draw); //start the animation again
-
-                g.selectAll("image#" + subString).attr("active", newOpacity);
               });
 
               
@@ -228,6 +239,7 @@ svg#topSvg{
                         canvas.drawImage(this, 0, 0);
                         originalImages[f] = this;
                         currentStateImages[f] = this;
+                        if(f==59){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
                         window.URL.revokeObjectURL(url[f]);
                       }
                     })(frame);
@@ -239,11 +251,11 @@ svg#topSvg{
 
                   }
                   frame++;
-                  ID = requestAnimationFrame(draw);
+                  requestID = requestAnimationFrame(draw);
 
                 }
 
-                ID = requestAnimationFrame(draw);
+                requestID = requestAnimationFrame(draw);
 
 
                 function reCreateImages() {
@@ -251,7 +263,7 @@ svg#topSvg{
                   if (url != undefined) {
                     url = undefined; //freeing the url list
                   }
-                  var f = 0,
+                    var f = 0,
                     tempImages = {};
 
                   while (f < 60) {
@@ -261,15 +273,18 @@ svg#topSvg{
                         offScreenCanvas.height = height;
 
                     var linePath = new Path2D(), //this one for drawing lines
+                        latestArrowPath = new Path2D(), //this one for drawing blue arrow heads i.e. latest stations line
                         arrowPath = new Path2D(); //this path for drawing arrow head
 
                     offScreenContext.drawImage(originalImages[f], 0, 0);
                     offScreenContext.globalCompositeOperation = 'source-in';
 
+                    var t = ((f + 1) * 16) / 1000;
+
                     for (var i = 0; i < pathData.length; i++) {
                       if (pathData[i]['active'] == 1) {
                         var temp = pathData[i][windFlowIDS[i]],
-                          h = pathData[i]['h'];
+                          h = pathData[i]['h'],isLast = lastSelected.includes(i);
 
                         for (var j = 0; j < temp.length; j++) {
                           var obj = temp[j];
@@ -282,8 +297,7 @@ svg#topSvg{
                               moveAngle = 30 * (Math.PI / 180),
                               beforeAngle = (Math.PI + angle) - moveAngle,
                               afterAngle = (Math.PI + angle) + moveAngle,
-                              hypo = Math.abs(h / Math.cos(moveAngle)),
-                              t = ((f + 1) * 16) / 1000,
+                              hypo = Math.abs(h / Math.cos(moveAngle)),   
                               nextPoint = pathInterpolator(t);
 
                             var x2 = Math.ceil(nextPoint[0]),
@@ -297,10 +311,17 @@ svg#topSvg{
                               rightX = Math.ceil(x2 + Math.cos(afterAngle) * hypo),
                               rightY = Math.ceil(y2 + Math.sin(afterAngle) * hypo);
 
-                            arrowPath.moveTo(x2, y2);
-                            arrowPath.lineTo(leftX, leftY);
-                            arrowPath.lineTo(rightX, rightY);
-                            arrowPath.lineTo(x2, y2);
+                            if(isLast){
+                              latestArrowPath.moveTo(x2, y2);
+                              latestArrowPath.lineTo(leftX, leftY);
+                              latestArrowPath.lineTo(rightX, rightY);
+                              latestArrowPath.lineTo(x2, y2);
+                            }else{
+                              arrowPath.moveTo(x2, y2);
+                              arrowPath.lineTo(leftX, leftY);
+                              arrowPath.lineTo(rightX, rightY);
+                              arrowPath.lineTo(x2, y2);
+                            }
 
                             obj[4] = pathInterpolator;
 
@@ -309,10 +330,8 @@ svg#topSvg{
                             obj.push(hypo);
 
                           } else {
-                            var t = ((f + 1) * 16) / 1000,
-                              nextPoint = obj[4](t);
-
-                            var x2 = Math.ceil(nextPoint[0]),
+                            var nextPoint = obj[4](t),
+                              x2 = Math.ceil(nextPoint[0]),
                               y2 = Math.ceil(nextPoint[1]);
 
                             linePath.moveTo(+obj[0], +obj[1]);
@@ -323,10 +342,17 @@ svg#topSvg{
                               rightX = Math.ceil(x2 + Math.cos(obj[6]) * obj[7]),
                               rightY = Math.ceil(y2 + Math.sin(obj[6]) * obj[7]);
 
-                            arrowPath.moveTo(x2, y2);
-                            arrowPath.lineTo(leftX, leftY);
-                            arrowPath.lineTo(rightX, rightY);
-                            arrowPath.lineTo(x2, y2);
+                            if(isLast){
+                              latestArrowPath.moveTo(x2, y2);
+                              latestArrowPath.lineTo(leftX, leftY);
+                              latestArrowPath.lineTo(rightX, rightY);
+                              latestArrowPath.lineTo(x2, y2);
+                            }else{
+                              arrowPath.moveTo(x2, y2);
+                              arrowPath.lineTo(leftX, leftY);
+                              arrowPath.lineTo(rightX, rightY);
+                              arrowPath.lineTo(x2, y2);
+                            }
 
                           }
                         }
@@ -342,6 +368,10 @@ svg#topSvg{
                     offScreenContext.stroke(arrowPath);
                     offScreenContext.fillStyle = "#F0FFFF";
                     offScreenContext.fill(arrowPath);
+                    offScreenContext.strokeStyle = "#2F4F4F";
+                    offScreenContext.stroke(latestArrowPath);
+                    offScreenContext.fillStyle = "#2F4F4F";
+                    offScreenContext.fill(latestArrowPath);
 
                     tempImages[f] = offScreenCanvas;
                     f++;

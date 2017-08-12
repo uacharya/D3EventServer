@@ -138,8 +138,9 @@ svg#topSvg{
             upperBound = d3.max(data, function(item) {
               return item["values"].length;
             }),
-            windFlowIDS = [],
-            requestID; //variable to store request ID of animation
+            windFlowIDS = [], allowClick=false, //variable used to not let clicking event before first complete flow
+            requestID, //variable to store request ID of animation
+            lastSelected = undefined; //holding the flows for latest interaction station
           // highestVelocity = d3.max(data, function(item) {
           //   return d3.max(item["values"], function(d) {
           //     return +d["Wind_Velocity"];
@@ -194,35 +195,46 @@ svg#topSvg{
             }).on("mouseout", function(d, i) {
               topSvg.selectAll("text").remove();
             }).on("click", function() {
-              var selectedElement = d3.select(this),
-                isActive = selectedElement.attr("active"),
-                newOpacity = (isActive == 1) ? 0 : 1,
-                subString = selectedElement.attr("id"),
-                totalSelection = [];
-              //getting all the stream line class where this station is a source of wind
-              for (var i = 0; i < windFlowIDS.length; i++) {
-                var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
-                if (temp == subString) {
-                  totalSelection.push(i);
-                }
-              }
-             
-              for (var j = 0; j < totalSelection.length; j++) {
-                  var index = totalSelection[j],
-                      streamLineID = windFlowIDS[index];
-                
-                  totalPathData[index].active = newOpacity;
-                  g.selectAll("line." + streamLineID).attr("active", newOpacity);
+
+              if(allowClick==true){
+                  var selectedElement = d3.select(this),
+                    isActive = selectedElement.attr("active"),
+                    newOpacity = (isActive == 1) ? 0 : 1,
+                    subString = selectedElement.attr("id"),
+                    totalSelection = [];
+                  //getting all the stream line class where this station is a source of wind
+                  for (var i = 0; i < windFlowIDS.length; i++) {
+                    var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
+                    if (temp == subString) {
+                      totalSelection.push(i);
+                    }
+                  }
+                 
+                  for (var j = 0; j < totalSelection.length; j++) {
+                      var index = totalSelection[j],
+                          streamLineID = windFlowIDS[index];
+
+                      totalPathData[index].active = newOpacity;
+                      g.selectAll("line." + streamLineID).attr("active", newOpacity);
+                      
+                  } 
+
+                  g.selectAll("image#" + subString).attr("active", newOpacity);
+
+                  if(newOpacity==1){
+                    lastSelected=totalSelection;
+                  }
+
+                  reCreateImages(); //creating new images for animation
+
+                  cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
+                  requestID = requestAnimationFrame(animate); //start the animation again
+
                   
-              } 
 
-
-              reCreateImages(); //creating new images for animation
-
-              cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
-              requestID = requestAnimationFrame(animate); //start the animation again
-
-              g.selectAll("image#" + subString).attr("active", newOpacity);
+                }else{
+                  console.log("interaction not allowed yet");
+                }
             });
 
             //this object gives the maximum and minimum bound of both x and y coordinates of current projection
@@ -281,8 +293,6 @@ svg#topSvg{
                     //,color:strokeColor};
 
                     streamLineData.value.push(obj); //adding each line data into one container for one flow
-
-
 
                     //appends line as DOM objects so that they can be used to give velocity on hover over
                     g.append("line").attr("x1", startPoint[0]).attr("y1", startPoint[1]).attr("x2", endPoint[0]).attr("y2", endPoint[1])
@@ -513,6 +523,8 @@ svg#topSvg{
               // createArrows(offScreenContext,arrowPath); //this function creates arrow heads on the top of the animating lines
               allFrames[frame] = offScreenCanvas; //stroing original frames for later use
               currentStateImages[frame] = offScreenCanvas;
+
+              if(frame==60){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
             } else {
               canvas.clearRect(0, 0, width, height);
               canvas.drawImage(currentStateImages[frame], 0, 0);
@@ -527,7 +539,7 @@ svg#topSvg{
 
                   var f = 0,
                     tempImages = {};
-
+                 
                   while (f < 60) {
                     var offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
@@ -535,6 +547,7 @@ svg#topSvg{
                         offScreenCanvas.height = height;
 
                     var linePath = new Path2D(), //this one for drawing lines
+                        latestArrowPath = new Path2D(), //this one for drawing blue arrow heads i.e. latest stations line
                         arrowPath = new Path2D(); //this path for drawing arrow head
 
                     offScreenContext.drawImage(allFrames[f+1], 0, 0);
@@ -542,27 +555,37 @@ svg#topSvg{
 
                     var t = ((f + 1) * 16) / 1000;
                     for (var i = 0; i < totalPathData.length; i++) {
+
                       if (totalPathData[i]['active'] == 1) {
-                        var temp = totalPathData[i].value;
+                        var temp = totalPathData[i].value,
+                            isLast = lastSelected.includes(i);
 
                         for (var j = 0; j < temp.length; j++) {
                           var obj = temp[j],  
 		                      arrowPoint = obj.interpolator(t),
 		                      x1 = Math.ceil(arrowPoint[0]),
 		                      y1 = Math.ceil(arrowPoint[1]);
-		 
-		                    linePath.moveTo(obj.x0, obj.y0);
-		                    linePath.lineTo(x1, y1);
+
+                          linePath.moveTo(obj.x0, obj.y0);
+                          linePath.lineTo(x1, y1);
+
 
 		                    var leftX = Math.ceil(x1 + Math.cos(obj.beforeAngle) * obj.h),
 		                    leftY = Math.ceil(y1 + Math.sin(obj.beforeAngle) * obj.h),
 		                    rightX = Math.ceil(x1 + Math.cos(obj.afterAngle) * obj.h),
 		                    rightY = Math.ceil(y1 + Math.sin(obj.afterAngle) * obj.h);
 
-		                    arrowPath.moveTo(x1, y1);
-		                    arrowPath.lineTo(leftX, leftY);
-		                    arrowPath.lineTo(rightX, rightY);
-		                    arrowPath.lineTo(x1, y1);
+                        if(isLast){
+                          latestArrowPath.moveTo(x1, y1);
+                          latestArrowPath.lineTo(leftX, leftY);
+                          latestArrowPath.lineTo(rightX, rightY);
+                          latestArrowPath.lineTo(x1, y1);
+                        }else{
+    		                    arrowPath.moveTo(x1, y1);
+    		                    arrowPath.lineTo(leftX, leftY);
+    		                    arrowPath.lineTo(rightX, rightY);
+    		                    arrowPath.lineTo(x1, y1);
+                          }
 
                           }
                       }
@@ -577,6 +600,10 @@ svg#topSvg{
                     offScreenContext.stroke(arrowPath);
                     offScreenContext.fillStyle = "#F0FFFF";
                     offScreenContext.fill(arrowPath);
+                    offScreenContext.strokeStyle = "#2F4F4F";
+                    offScreenContext.stroke(latestArrowPath);
+                    offScreenContext.fillStyle = "#2F4F4F";
+                    offScreenContext.fill(latestArrowPath);
 
                     tempImages[f+1] = offScreenCanvas;
                     f++;

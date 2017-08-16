@@ -4,7 +4,7 @@
 <title></title>
 <style>
 body{
-/*    overflow:hidden;*/
+    overflow:hidden;
 }
 
 path {
@@ -98,17 +98,17 @@ webSocket.onerror= function(){
             .clamp(true)
             .range([90, 20]);
             
-            d3.select("body").append("clipPath").attr("id","clipIt").append("rect").attr("x",clipDimensions[0]).attr("y",clipDimensions[1]).attr("width",3840).attr("height",2160);
-
+    
             var svg = d3.select("body").append("svg")
             .attr("width", 11520)
             .attr("height", 6480)
-            .attr("clip-path","url(#clipIt)")
+            .attr("clip-path","url(#clipping)")
             .attr("viewBox",parameters)
             .attr("preserveAspectRatio","xMinYMin meet")
-            .append("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            .append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+            d3.select("svg").append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",3840).attr("height",2160);
+  
 
             var partition = d3.layout.partition()
             .sort(function (a, b) {
@@ -317,7 +317,7 @@ function updateArc(d) {
     return {depth: d.depth, x: d.x, dx: d.dx};
 }
 
-d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
+// d3.select(self.frameElement).style("height", margin.top + margin.bottom + "px");
 }
 
 createGraphics();

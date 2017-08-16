@@ -65,6 +65,8 @@ svg#topSvg{
 
     var width = 11520,
       height = 6480,
+      viewBoxHeight=2160,
+      viewBoxWidth= 3840,
       maxlat = 89,
       initialScale = 1832;
 
@@ -84,17 +86,21 @@ svg#topSvg{
       .attr("preserveAspectRatio","xMinYMin meet")
       .style("z-index", 0)
       .style("background-color", "#1ca2ba")
+    
 
-      svg.append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",3840).attr("height",2160);
-
-
-    // var topSvg = d3.select("body").append("svg").attr("id", "topSvg")
-    //   .attr("width", width)
-    //   .attr("height", height);
+      svg.append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",viewBoxWidth).attr("height",viewBoxHeight);
 
 
-    // var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", width)
-    //   .attr("height", height).node().getContext('2d');
+    var topSvg = d3.select("body").append("svg").attr("id", "topSvg")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("height", height)
+      .attr("clip-path","url(#clipping)")
+      .attr("viewBox",parameters)
+      .attr("preserveAspectRatio","xMinYMin meet");
+
+    var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", viewBoxWidth)
+      .attr("height", viewBoxHeight).node().getContext('2d');
 
     // svg.append("svg:clipPath").attr("id","clipIt").append("rect").attr("x",0).attr("y",0).attr("width",640).attr("height",1080);
 

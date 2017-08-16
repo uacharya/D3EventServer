@@ -83,9 +83,10 @@
     </div>
     <script src="http://d3js.org/d3.v3.min.js" charset="UTF-8"></script>
     <script>
-    var parameters,clipDimensions=[];    
+     
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
+         var parameters,clipDimensions=[];  
         d3.csv("http://10.29.3.2:8085/dataSetForBarChart.csv",function(data){
             var dataSet = data;
     var i = 0;

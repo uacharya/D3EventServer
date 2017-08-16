@@ -55,14 +55,9 @@ svg#topSvg{
     <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
     <script>
     "use strict";
+    var clipDimensions;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
-
-      var clipDimensions = window.location.search.substring(1).split(",");
-      clipDimensions.push(11520);
-      clipDimensions.push(6480);
-
-      var parameters = clipDimensions.join(" ");
 
     var interpolationWidthBound = 0; //do not set both offset and width to zero else will occur endless loop
 
@@ -78,7 +73,8 @@ svg#topSvg{
       .translate([5760,4250])
       .scale(initialScale)
       .rotate([0, 0]);
-
+    //display parameters for the particular monitor
+    var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
     var svg = d3.select("body").append("svg")
       .attr("width", width)
@@ -787,6 +783,13 @@ svg#topSvg{
     //   }
     // }
   }
+
+  clipDimensions = window.location.search.substring(1).split(",");
+  //checking until the url contains display dimension
+  while(clipDimensions==undefined){
+    clipDimensions = window.location.search.substring(1).split(",");
+  }
+  
   createGraphics();
     </script>
   </body>

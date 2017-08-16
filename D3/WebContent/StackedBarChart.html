@@ -86,7 +86,7 @@
      
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
-         var parameters,clipDimensions=[];  
+         var clipDimensions;  
         d3.csv("http://10.29.3.2:8085/dataSetForBarChart.csv",function(data){
             var dataSet = data;
     var i = 0;
@@ -117,7 +117,8 @@
             var yAxis = d3.svg.axis().scale(y).tickSize(10).tickPadding(6).orient("left");
             var finalYPoint = d3.svg.axis().scale(y).tickSize(0).tickValues([yStackMax]).orient("left");
 
-            
+            //display parameters for the particular monitor
+            var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
             var svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
@@ -242,19 +243,18 @@
             }
         });
 
+      clipDimensions = window.location.search.substring(1).split(",");
+      //checking until the url contains display dimension
+      while(clipDimensions==undefined){
         clipDimensions = window.location.search.substring(1).split(",");
-        clipDimensions.push(11520);
-        clipDimensions.push(6480);
+      }
 
         if(clipDimensions[0]==3840 && clipDimensions[1]==0){
             d3.select("#buttons").style("visibility","visible");
         }
 
-        parameters = clipDimensions.join(" ");
-
 }
-
-    createGraphics();
+createGraphics();
 </script>
 
 

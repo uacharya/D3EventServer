@@ -11,8 +11,10 @@
 
     webSocket.onmessage = function(dimension){
 
-        if(dimension.data!="grouped"&&dimension.data!="stacked"){
+        if(dimension.data.indexOf("?")>=0){
             window.history.replaceState({},document.Title,dimension.data);
+        }else{
+
         }
     }
 
@@ -57,7 +59,7 @@ svg#topSvg{
      <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions;
+    var clipDimensions,node;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -138,17 +140,17 @@ svg#topSvg{
         .attr("stroke-width", 3);
 
 
-      var dataDate = 1929;
+      var dataDate = 19291128;
 
 
       var timeID = setInterval(function() {
-        d3.request("http://127.0.0.1:8085/").post(JSON.stringify({
+        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
           date: dataDate,
           type: "raw"
         }), function(error, data) {
 
           if (data.responseText == "ready") {
-            getStreamFLowData(dataDate+"_raw");
+            getStreamFLowData(dataDate+","+node+"_raw");
             dataDate++;
             clearInterval(timeID);
           }
@@ -160,7 +162,7 @@ svg#topSvg{
       function getStreamFLowData(date) {
 
 
-        d3.csv("http://127.0.0.1:8085/data_" + date + ".csv", function(error, response) {
+        d3.csv("http://10.29.3.2:8085/data_" + date + ".csv", function(error, response) {
 
           d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
           d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
@@ -171,8 +173,12 @@ svg#topSvg{
           //converts the csv data into data arranged into groups based on their ID'ss
           var data = d3.nest().key(function(d) {
               return d.ID
-            }).entries(response), //ID now is key
-            upperBound = d3.max(data, function(item) {
+            }).entries(response); //ID now is key
+
+          if(data.length==0){
+            return;
+          }
+          var upperBound = d3.max(data, function(item) {
               return item["values"].length;
             }),
             windFlowIDS = [], allowClick=false, //variable used to not let clicking event before first complete flow
@@ -217,7 +223,7 @@ svg#topSvg{
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
-              .attr("xlink:href", "/Users/Uzwal/Desktop/ineGraph/station.png")
+              .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr("x", function(d, i) {
                 return projection([d.lon, d.lat])[0] - 10;
               })
@@ -564,7 +570,7 @@ svg#topSvg{
               offScreenContext.fill(arrowPath);
 
               // createArrows(offScreenContext,arrowPath); //this function creates arrow heads on the top of the animating lines
-              allFrames[frame] = offScreenCanvas; //stroing original frames for later use
+              allFrames[frame] = offScreenCanvas; //storing original frames for later use
               currentStateImages[frame] = offScreenCanvas;
 
               if(frame==60){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
@@ -572,6 +578,7 @@ svg#topSvg{
               canvas.clearRect(0, 0, width, height);
               canvas.drawImage(currentStateImages[frame], 0, 0);
             }
+            console.log(frame);
 
             requestID = requestAnimationFrame(animate); //calling another animation frame to draw
 
@@ -676,6 +683,28 @@ svg#topSvg{
   while(clipDimensions==undefined){
     clipDimensions = window.location.search.substring(1).split(",");
   }
+
+  (function(){
+    if(clipDimensions[0]==0 && clipDimensions[1]==0){
+      node = 1;
+    }else if (clipDimensions[0]==3840 && clipDimensions[1]==0){
+      node = 2;
+    }else if (clipDimensions[0]==7680 && clipDimensions[1]==0){
+      node = 3;
+    }else if (clipDimensions[0]==0 && clipDimensions[1]==2160){
+      node = 4;
+    }else if(clipDimensions[0]==3840 && clipDimensions[1]==2160){
+      node = 5;
+    }else if (clipDimensions[0]==7680 && clipDimensions[1]==2160){
+      node = 6;
+    }else if (clipDimensions[0]==0 && clipDimensions[1]==4320){
+      node = 7;
+    }else if(clipDimensions[0]==3840 && clipDimensions[1]==4320){
+      node = 8;
+    }else if(clipDimensions[0]=7680 && clipDimensions[1]==4320){
+      node = 9;
+    }
+  })()
   
   createGraphics();
     </script>

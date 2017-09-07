@@ -3,27 +3,27 @@
   <title> checking animation</title>
   <script type="text/javascript">
 
-    var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
+    // var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
-    webSocket.onopen = function(){
-        webSocket.send("X="+window.screenX);
-    }
+    // webSocket.onopen = function(){
+    //     webSocket.send("X="+window.screenX);
+    // }
 
-    webSocket.onmessage = function(dimension){
+    // webSocket.onmessage = function(dimension){
 
-        if(dimension.data.indexOf("?")>=0){
-            window.history.replaceState({},document.Title,dimension.data);
-        }else{
+    //     if(dimension.data.indexOf("?")>=0){
+    //         window.history.replaceState({},document.Title,dimension.data);
+    //     }else{
 
-        }
-    }
+    //     }
+    // }
 
-    var sendEvent = function(value){
-        webSocket.send(value);
-    }    
-    webSocket.onerror = function(value){
-        alert("error happend for value "+ value);
-    }
+    // var sendEvent = function(value){
+    //     webSocket.send(value);
+    // }    
+    // webSocket.onerror = function(value){
+    //     alert("error happend for value "+ value);
+    // }
     </script>
   <style>
   text {
@@ -73,7 +73,7 @@ svg#topSvg{
       viewBoxWidth= 3840,
       maxlat = 85,
       initialScale = 1833.31;
-
+      
     var projection = d3.geoMercator()
       .center([0,0])
       .translate([5759.513227752704,4250])
@@ -517,14 +517,14 @@ svg#topSvg{
             if (allFrames[frame] == undefined) {
             	var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
 		            offScreenContext = offScreenCanvas.getContext('2d');
-		            offScreenCanvas.width = width; // match the off-screen canvas dimensions with that the main drawing Canvas
-		            offScreenCanvas.height = height;
+		            offScreenCanvas.width = viewBoxWidth;// match the off-screen canvas dimensions with that the main drawing Canvas
+		            offScreenCanvas.height = viewBoxHeight;
 
             var linePath = new Path2D(), //this one for drawing lines
                 arrowPath = new Path2D(); //this path for drawing arrow head
 
             var t = (frame * 16) / 1000;
-            canvas.clearRect(0, 0, width, height);
+            canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               //drawing the lines
               for (var i = 0; i < totalPathData.length; i++) {
                 var flow = totalPathData[i];
@@ -575,10 +575,9 @@ svg#topSvg{
 
               if(frame==60){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
             } else {
-              canvas.clearRect(0, 0, width, height);
+              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               canvas.drawImage(currentStateImages[frame], 0, 0);
             }
-            console.log(frame);
 
             requestID = requestAnimationFrame(animate); //calling another animation frame to draw
 
@@ -593,8 +592,8 @@ svg#topSvg{
                   while (f < 60) {
                     var offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
-                        offScreenCanvas.width = width; // match the off-screen canvas dimensions with that the main drawing Canvas
-                        offScreenCanvas.height = height;
+                        offScreenCanvas.width = viewBoxWidth;// match the off-screen canvas dimensions with that the main drawing Canvas
+                        offScreenCanvas.height =viewBoxHeight;
 
                     var linePath = new Path2D(), //this one for drawing lines
                         latestArrowPath = new Path2D(), //this one for drawing blue arrow heads i.e. latest stations line

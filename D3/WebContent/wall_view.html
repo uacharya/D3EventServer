@@ -2,28 +2,29 @@
   <meta charset="utf-8">
   <title> checking animation</title>
   <script type="text/javascript">
+    
+    var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
-    // var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
+    webSocket.onopen = function(){
+        webSocket.send("X="+window.screenX);
+    }
 
-    // webSocket.onopen = function(){
-    //     webSocket.send("X="+window.screenX);
-    // }
+    webSocket.onmessage = function(dimension){
 
-    // webSocket.onmessage = function(dimension){
+        if(dimension.data.indexOf("?")>=0){
+            window.history.replaceState({},document.Title,dimension.data);
+        }else{
+            recieveEventData.call(JSON.parse(dimension.data));
+        }
+    }
 
-    //     if(dimension.data.indexOf("?")>=0){
-    //         window.history.replaceState({},document.Title,dimension.data);
-    //     }else{
+    var sendEvent = function(value){
+        webSocket.send(value);
+    }    
+    webSocket.onerror = function(value){
+        alert("error happend for value "+ value);
+    }
 
-    //     }
-    // }
-
-    // var sendEvent = function(value){
-    //     webSocket.send(value);
-    // }    
-    // webSocket.onerror = function(value){
-    //     alert("error happend for value "+ value);
-    // }
     </script>
   <style>
   text {
@@ -59,7 +60,7 @@ svg#topSvg{
      <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node;
+    var clipDimensions,node,recieveEventData;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -243,7 +244,49 @@ svg#topSvg{
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
                     newOpacity = (isActive == 1) ? 0 : 1,
-                    subString = selectedElement.attr("id"),
+                    subString = selectedElement.attr("id");
+
+                  sendEvent(JSON.stringify({s:subString,o:newOpacity}));
+                  //   totalSelection = [];
+                  // //getting all the stream line class where this station is a source of wind
+                  // for (var i = 0; i < windFlowIDS.length; i++) {
+                  //   var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
+                  //   if (temp == subString) {
+                  //     totalSelection.push(i);
+                  //   }
+                  // }
+                 
+                  // for (var j = 0; j < totalSelection.length; j++) {
+                  //     var index = totalSelection[j],
+                  //         streamLineID = windFlowIDS[index];
+
+                  //     totalPathData[index].active = newOpacity;
+                  //     g.selectAll("line." + streamLineID).attr("active", newOpacity);
+                      
+                  // } 
+
+                  // g.selectAll("image#" + subString).attr("active", newOpacity);
+
+                  // if(newOpacity==1){
+                  //   lastSelected=totalSelection;
+                  // }
+
+                  // reCreateImages(); //creating new images for animation
+
+                  // cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
+                  // requestID = requestAnimationFrame(animate); //start the animation again
+
+                  
+
+                }else{
+                  console.log("interaction not allowed yet");
+                }
+            });
+
+            //this function gets the selected station name from the server and changes the flow from that station 
+            recieveEventData = function(data){
+                var newOpacity = +data['o'],
+                    subString = data['s'],
                     totalSelection = [];
                   //getting all the stream line class where this station is a source of wind
                   for (var i = 0; i < windFlowIDS.length; i++) {
@@ -272,13 +315,8 @@ svg#topSvg{
 
                   cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
                   requestID = requestAnimationFrame(animate); //start the animation again
-
-                  
-
-                }else{
-                  console.log("interaction not allowed yet");
-                }
-            });
+              
+            }
 
             //this object gives the maximum and minimum bound of both x and y coordinates of current projection
             var dimension = mercatorBounds(projection, maxlat),
@@ -510,7 +548,7 @@ svg#topSvg{
           //this function animates the streamline by moving the curves with arrow heads on it
           function animate() {
             frame++;
-            if (frame > 60) {
+            if (frame > 30) {
               frame = 1;
             }
             
@@ -523,7 +561,7 @@ svg#topSvg{
             var linePath = new Path2D(), //this one for drawing lines
                 arrowPath = new Path2D(); //this path for drawing arrow head
 
-            var t = (frame * 16) / 1000;
+            var t = (frame * 33.33) / 1000;
             canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               //drawing the lines
               for (var i = 0; i < totalPathData.length; i++) {
@@ -573,7 +611,7 @@ svg#topSvg{
               allFrames[frame] = offScreenCanvas; //storing original frames for later use
               currentStateImages[frame] = offScreenCanvas;
 
-              if(frame==60){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
+              if(frame==30){ allowClick=true; } //allowing to interact with data after all 60 frames has been created 
             } else {
               canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               canvas.drawImage(currentStateImages[frame], 0, 0);
@@ -589,7 +627,7 @@ svg#topSvg{
                   var f = 0,
                     tempImages = {};
                  
-                  while (f < 60) {
+                  while (f < 30) {
                     var offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
                         offScreenCanvas.width = viewBoxWidth;// match the off-screen canvas dimensions with that the main drawing Canvas
@@ -602,7 +640,7 @@ svg#topSvg{
                     offScreenContext.drawImage(allFrames[f+1], 0, 0);
                     offScreenContext.globalCompositeOperation = 'source-in';
 
-                    var t = ((f + 1) * 16) / 1000;
+                    var t = ((f + 1) * 33.33) / 1000;
                     for (var i = 0; i < totalPathData.length; i++) {
 
                       if (totalPathData[i]['active'] == 1) {
@@ -665,7 +703,8 @@ svg#topSvg{
 
                   }
 
-                  currentStateImages = tempImages;
+                  currentStateImages =undefined;
+                  currentStateImages= tempImages;
                   tempImages = undefined;
 
                 }

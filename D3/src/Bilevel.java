@@ -19,9 +19,18 @@ import javax.websocket.server.ServerEndpoint;
 public class Bilevel {
 	private static final double height = 6480;
 	private static final double width = 11520;
+	private boolean allowClick;
 
-	// list of all the sessions into one container
+	// list of all the sessions into one container and all instances in one
 	private static final Set<Session> allSessions = Collections.synchronizedSet(new HashSet<Session>());
+	private static final Set<Bilevel> allInstances = Collections.synchronizedSet(new HashSet<Bilevel>());
+	
+	/**
+	 * This function creates an websocket instance with additional property associated with each object
+	 */
+	public Bilevel(){
+		this.allowClick=false;	
+	}
 
 	/**
 	 * This method handles the incoming connection from d3 web page to the d3
@@ -34,6 +43,7 @@ public class Bilevel {
 	public void handleOpen(Session session) {
 		// adding all of the sessions connected
 		allSessions.add(session); // add all the new sessions into one set
+		allInstances.add(this); // add all the new instances into one set
 		System.out.println("The number of client connected are " + allSessions.size());
 	}
 
@@ -57,8 +67,17 @@ public class Bilevel {
 		// belonging to screen in particular node
 		if (message.contains("X=")) {
 			sendDisplayDimension(session, IPAddress, message);
+		}else if (message.contains("click")){
+			this.allowClick = message.substring(message.indexOf(":")+1,message.length()-1).equals("false")?false:true;
 		} else {
-			sendMessageToAll(message);// sending events to all
+			synchronized (allInstances) {
+				for(Bilevel e:allInstances){
+					if(e.getAllowInteraction()==false){
+						return;
+					}
+				}
+				sendMessageToAll(message);// sending events to all				
+			}
 		}
 
 	}
@@ -154,6 +173,13 @@ public class Bilevel {
 		}
 		return dimension;
 	}
+	
+	/** This function just returns a property associated with each websocket object created
+	 * @return
+	 */
+	public boolean getAllowInteraction(){
+		return this.allowClick;
+	}
 
 	/**
 	 * This method closes the session if the web page is closed in the browser
@@ -165,6 +191,7 @@ public class Bilevel {
 	public void handleClose(Session session) {
 		System.out.println("client is now closed with ID " + session.getId());
 		allSessions.remove(session);
+		allInstances.remove(this);
 	}
 
 	/**

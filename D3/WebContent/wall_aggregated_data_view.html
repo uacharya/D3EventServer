@@ -32,8 +32,8 @@
   font: 13px sans-serif;
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
-body { margin: 0px; 
-    padding: 0px;
+body { margin: 0; 
+      padding: 0px;
   overflow: hidden;
   }
 
@@ -57,7 +57,7 @@ svg#topSvg{
   <body>
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
     <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
-     <script type="text/javascript" src="./normalize.js"></script>
+    <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
     var clipDimensions,node;
@@ -84,6 +84,7 @@ svg#topSvg{
     //display parameters for the particular monitor
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
+
     var svg = d3.select("body").append("svg")
       .attr("width", width)
       .attr("height", height)
@@ -108,6 +109,9 @@ svg#topSvg{
       .attr("height", viewBoxHeight).node().getContext('2d');
 
     var transformer = new transform(clipDimensions[0],clipDimensions[1]);
+
+    // svg.append("svg:clipPath").attr("id","clipIt").append("rect").attr("x",0).attr("y",0).attr("width",640).attr("height",1080);
+
     //creating a marker as arrowhead
     // svg.append("defs").append("marker").attr("id","arrowHead").attr("refX",3).attr("refY",3).attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto")
     // .append("path").attr("d","M0,0L6,3L0,6L3,3L0,0").attr("fill","white");
@@ -128,12 +132,12 @@ svg#topSvg{
     }
 
     //this object gives the maximum and minimum bound of both x and y coordinates of current projection
-    var dimension = mercatorBounds(projection, maxlat),
-      minimumX = dimension[0][0],
-      maximumX = dimension[1][0];
+      var dimension = mercatorBounds(projection, maxlat),
+        minimumX = dimension[0][0],
+        maximumX = dimension[1][0];
 
     //load and display the World
-    d3.json("http://10.29.3.2:8085/world-map.json", function(error, topology) {
+    d3.json("http://127.0.0.1:8085/world-map.json", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -143,7 +147,9 @@ svg#topSvg{
         .attr("d", path)
         .attr("stroke", "white")
         .attr("fill", "#e1bb9e")
-        .attr("stroke-width", 3);
+        .attr("stroke-width", 1);
+
+      
 
 
       var dataDate = 19291128;
@@ -176,7 +182,7 @@ svg#topSvg{
       function getStreamFLowData(date) {
 
 
-        d3.csv("http://10.29.3.2:8085/data_" + date + ".csv", function(error, response) {
+        d3.json("http://127.0.0.1:8085/data_" + date + ".csv", function(error, response) {
 
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = undefined; //clearing the last selected from previous date data
@@ -188,39 +194,32 @@ svg#topSvg{
 
             totalPathData = [];
             windFlowIDS = [];
-            
+
             //sending server to not allow interaction when every single client doesnot register click event in server
             sendEvent(JSON.stringify(
             {
               click:false
             }));
+            
 
-            frame = 0; //frame counter total equals 60
-            allFrames = {}; //variable to cache original images for animation
-            currentStateImages = {}; // current image to draw in the canvas based on user input
+            frame = 0, //frame counter total equals 60
+              allFrames = {}, //variable to cache original images for animation
+              currentStateImages = {}; // current image to draw in the canvas based on user input
 
-          //converts the csv data into data arranged into groups based on their ID'ss
-          var data = d3.nest().key(function(d) {
-              return d.ID
-            }).entries(response); //ID now is key
+          /* making sure if empty data is send return immediately*/
 
-          if(data.length==0){
-            sendEvent(JSON.stringify(
-                {
-                  click:true
-                }));
-            return;
-          }
-          var upperBound = d3.max(data, function(item) {
-              return item["values"].length;
-            }),
-            arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 1]).clamp(true); //bounding the arrow size according to lines in a flow
+          //getting the upper bound of flow to bound arrow head basd on number of data points in the flow
+          var upperBound = response['upper_bound'];
+
+          delete response['upper_bound']; //removing this key as it would cause one more unnecessay iteration
+
+          var arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 1]).clamp(true); //bounding the arrow size according to lines in a flow
           // lineColor = d3.scaleLinear().domain([1,highestVelocity]).range(["#FF0000","#800000"]); //bounding the color of curves based on wind velocity from pure red to maroon
           //looping through the groups based on keys
-          for (var i = 0; i < data.length; i++) {
+          for (var key in response) {
 
-            var wind_flow_data = data[i]["values"], //values of the wind flow
-              station_id = data[i]["key"], //value of the key for that station to station wind flow
+            var wind_flow_data = response[key], //values of the wind flow
+              station_id = key, //value of the key for that station to station wind flow
               streamLineData = {
                 id: station_id,
                 active: 0,
@@ -247,7 +246,7 @@ svg#topSvg{
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
-              .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
+              .attr("xlink:href", "C:\\Users\\walluser\\Desktop\\testing\\station.png")
               .attr("x", function(d, i) {
                 return projection([d.lon, d.lat])[0] - 10;
               })
@@ -273,8 +272,8 @@ svg#topSvg{
                   }));
               });
 
-
             var arrow_size = arrowSize(wind_flow_data.length);
+
 
             wind_flow_data.forEach(function(d, i) {
               //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
@@ -349,10 +348,9 @@ svg#topSvg{
             });
 
             totalPathData.push(streamLineData); //adding each stream line flow between two stations to total flows
+                        }
 
-          }
-
-          requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
+            requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
 
           });
 
@@ -395,22 +393,24 @@ svg#topSvg{
 
         }
 
-        console.log(document.getElementsByTagName('*').length);
 
-        //this function animates the streamline by moving the curves with arrow heads on it
-        function animate() {
-          frame++;
-          if (frame > 30) {
-            frame = 1;
-          }
+          console.log(document.getElementsByTagName('*').length);
 
-          if (allFrames[frame] == undefined) {
-            var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
-              offScreenContext = offScreenCanvas.getContext('2d');
-            offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
-            offScreenCanvas.height = viewBoxHeight;
 
-            var linePath = new Path2D(), //this one for drawing lines
+          //this function animates the streamline by moving the curves with arrow heads on it
+          function animate() {
+            frame++;
+            if (frame > 30) {
+              frame = 1;
+            }
+            
+            if (allFrames[frame] == undefined) {
+            	var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
+		            offScreenContext = offScreenCanvas.getContext('2d');
+		            offScreenCanvas.width = viewBoxWidth;// match the off-screen canvas dimensions with that the main drawing Canvas
+		            offScreenCanvas.height = viewBoxHeight;
+
+          var linePath = new Path2D(), //this one for drawing lines
               arrowPath = new Path2D(); //this path for drawing arrow head
 
             var t = (frame * 33.33) / 1000;
@@ -458,26 +458,27 @@ svg#topSvg{
             offScreenContext.stroke(arrowPath)
             offScreenContext.fillStyle = "#F0FFFF";
             offScreenContext.fill(arrowPath);
+ 
 
             // createArrows(offScreenContext,arrowPath); //this function creates arrow heads on the top of the animating lines
-            allFrames[frame] = offScreenCanvas; //stroing original frames for later use
+            allFrames[frame] = offScreenCanvas; //storing original frames for later use
             currentStateImages[frame] = offScreenCanvas;
 
             if (frame == 30) {
-                sendEvent(JSON.stringify(
-                {
-                  click:true
-                }));
-            } //allowing to interact with data after all 60 frames has been created 
-          } else {
-            canvas.clearRect(0, 0, width, height);
-            canvas.drawImage(currentStateImages[frame], 0, 0);
+              sendEvent(JSON.stringify(
+              {
+                click:true
+              }));
+            } //allowing to interact with data after all 60 frames has been 
+            } else {
+              canvas.clearRect(0, 0, width, height);
+              canvas.drawImage(currentStateImages[frame], 0, 0);
+            }
+
+            requestID = requestAnimationFrame(animate); //calling another animation frame to draw
+
           }
-
-          requestID = requestAnimationFrame(animate); //calling another animation frame to draw
-
-        }
-
+          
         //creates new frames in the animation based on the user input
         function reCreateImages() {
 
@@ -564,140 +565,142 @@ svg#topSvg{
           tempImages = undefined;
 
         }
-        //this function creates new parts of a curve based on their location in the new projection
-        function tweenTheCurves(a, b, x0, x1, minX, maxX) {
-          var result = [];
 
-          if (+b["Wind_Lon"] >= +a["Wind_Lon"] && x1[0] < x0[0]) {
-            var middlePoint = getTheConnectionPoint(x0, x1, "r", minX, maxX),
-              connectingPoint = [maxX, middlePoint],
-              nextOne = [minX, middlePoint];
+            //this function creates new parts of a curve based on their location in the new projection
+            function tweenTheCurves(a, b, x0, x1, minX, maxX) {
+              var result = [];
 
-            result.push([x0, connectingPoint]);
-            result.push([nextOne, x1]);
-          } else if (+b["Wind_Lon"] < +a["Wind_Lon"] && x1[0] >= x0[0]) {
-            var middlePoint = getTheConnectionPoint(x0, x1, "l", minX, maxX),
-              connectingPoint = [minX, middlePoint],
-              nextOne = [maxX, middlePoint];
+              if (+b["Wind_Lon"] >= +a["Wind_Lon"] && x1[0] < x0[0]) {
+                var middlePoint = getTheConnectionPoint(x0, x1, "r", minX, maxX),
+                  connectingPoint = [maxX, middlePoint],
+                  nextOne = [minX, middlePoint];
 
-            result.push([x0, connectingPoint]);
-            result.push([nextOne, x1]);
-          } else {
+                result.push([x0, connectingPoint]);
+                result.push([nextOne, x1]);
+              } else if (+b["Wind_Lon"] < +a["Wind_Lon"] && x1[0] >= x0[0]) {
+                var middlePoint = getTheConnectionPoint(x0, x1, "l", minX, maxX),
+                  connectingPoint = [minX, middlePoint],
+                  nextOne = [maxX, middlePoint];
 
-            result.push([x0, x1]);
-          }
+                result.push([x0, connectingPoint]);
+                result.push([nextOne, x1]);
+              } else {
 
-          return result;
-        }
+                result.push([x0, x1]);
+              }
 
-        //this function gets the exact location where the point is connected to two different sections
-        function getTheConnectionPoint(x0, x1, flag, minX, maxX) {
-          //this part takes care of condition when start point is in right side of screen and end point at left side while panning
-          if (flag == "r") {
-            var base = Math.abs(x0[0] - maxX) + Math.abs(minX - x1[0]),
-              height = x0[1] - x1[1],
-              tanRatio = height / base;
-            return x0[1] - (Math.abs(x0[0] - maxX) * tanRatio);
-          } //this part takes care of condition when start point is left side of screen and end point at right side while panning
-          else if (flag == "l") {
-            var base = Math.abs(x0[0] - minX) + Math.abs(maxX - x1[0]),
-              height = x0[1] - x1[1],
-              tanRatio = height / base;
-            return x1[1] + (Math.abs(x1[0] - maxX) * tanRatio);
-          }
-        }
+              return result;
+            }
 
-        //creates random particles that are parallel and inside the max interpolation bound on each side
-        function createRandomParticles(value, index) {
-
-          var run = value[1][0] - value[0][0],
-            rise = value[0][1] - value[1][1],
-            tanRatio = rise / run,
-            yMax = value[0][1] + interpolationWidthBound,
-            yMin = value[0][1] - interpolationWidthBound,
-            xMax = value[0][0] + interpolationWidthBound,
-            xMin = value[0][0] - interpolationWidthBound,
-            particles = [];
-
-
-          //when the slope of line is greater than 45 degrees
-          if (Math.abs(Math.atan(tanRatio) * (180 / Math.PI)) > 45) {
-            //this randomly creates all the lines on the right
-            for (var i = (value[0][0] + offset); i <= xMax; i += offset) {
-              var temp = plotTheLinesForX(i, tanRatio, value[0][1], value[1][1]);
-              particles.push(temp);
-              if (index == 0) {
-                particles.push([
-                  [value[0][0], value[0][1]],
-                  [temp[0][0], temp[0][1]]
-                ]);
+            //this function gets the exact location where the point is connected to two different sections
+            function getTheConnectionPoint(x0, x1, flag, minX, maxX) {
+              //this part takes care of condition when start point is in right side of screen and end point at left side while panning
+              if (flag == "r") {
+                var base = Math.abs(x0[0] - maxX) + Math.abs(minX - x1[0]),
+                  height = x0[1] - x1[1],
+                  tanRatio = height / base;
+                return x0[1] - (Math.abs(x0[0] - maxX) * tanRatio);
+              } //this part takes care of condition when start point is left side of screen and end point at right side while panning
+              else if (flag == "l") {
+                var base = Math.abs(x0[0] - minX) + Math.abs(maxX - x1[0]),
+                  height = x0[1] - x1[1],
+                  tanRatio = height / base;
+                return x1[1] + (Math.abs(x1[0] - maxX) * tanRatio);
               }
             }
 
-            //this randomly creates all the lines on the right
-            for (var i = (value[0][0] - offset); i >= xMin; i -= offset) {
-              var temp = plotTheLinesForX(i, tanRatio, value[0][1], value[1][1]);
-              particles.push(temp);
-              if (index == 0) {
-                particles.push([
-                  [value[0][0], value[0][1]],
-                  [temp[0][0], temp[0][1]]
-                ]);
+            //creates random particles that are parallel and inside the max interpolation bound on each side
+            function createRandomParticles(value, index) {
+
+              var run = value[1][0] - value[0][0],
+                rise = value[0][1] - value[1][1],
+                tanRatio = rise / run,
+                yMax = value[0][1] + interpolationWidthBound,
+                yMin = value[0][1] - interpolationWidthBound,
+                xMax = value[0][0] + interpolationWidthBound,
+                xMin = value[0][0] - interpolationWidthBound,
+                particles = [];
+
+
+              //when the slope of line is greater than 45 degrees
+              if (Math.abs(Math.atan(tanRatio) * (180 / Math.PI)) > 45) {
+                //this randomly creates all the lines on the right
+                for (var i = (value[0][0] + offset); i <= xMax; i += offset) {
+                  var temp = plotTheLinesForX(i, tanRatio, value[0][1], value[1][1]);
+                  particles.push(temp);
+                  if (index == 0) {
+                    particles.push([
+                      [value[0][0], value[0][1]],
+                      [temp[0][0], temp[0][1]]
+                    ]);
+                  }
+                }
+
+                //this randomly creates all the lines on the right
+                for (var i = (value[0][0] - offset); i >= xMin; i -= offset) {
+                  var temp = plotTheLinesForX(i, tanRatio, value[0][1], value[1][1]);
+                  particles.push(temp);
+                  if (index == 0) {
+                    particles.push([
+                      [value[0][0], value[0][1]],
+                      [temp[0][0], temp[0][1]]
+                    ]);
+                  }
+                }
+              } else {
+                //this randomly creates all the lines on the right
+                for (var i = (value[0][1] - offset); i >= yMin; i -= offset) {
+                  var temp = plotTheLinesForY(i, tanRatio, value[0][0], value[1][0]);
+                  particles.push(temp);
+                  if (index == 0) {
+                    particles.push([
+                      [value[0][0], value[0][1]],
+                      [temp[0][0], temp[0][1]]
+                    ]);
+                  }
+                }
+
+                //this randomly creates all the lines on the right
+                for (var i = (value[0][1] + offset); i <= yMax; i += offset) {
+                  var temp = plotTheLinesForY(i, tanRatio, value[0][0], value[1][0]);
+                  particles.push(temp);
+                  if (index == 0) {
+                    particles.push([
+                      [value[0][0], value[0][1]],
+                      [temp[0][0], temp[0][1]]
+                    ]);
+                  }
+                }
               }
-            }
-          } else {
-            //this randomly creates all the lines on the right
-            for (var i = (value[0][1] - offset); i >= yMin; i -= offset) {
-              var temp = plotTheLinesForY(i, tanRatio, value[0][0], value[1][0]);
-              particles.push(temp);
-              if (index == 0) {
-                particles.push([
-                  [value[0][0], value[0][1]],
-                  [temp[0][0], temp[0][1]]
-                ]);
-              }
+
+              //adding the actual line 
+              particles.push(value);
+
+              return particles;
+
             }
 
-            //this randomly creates all the lines on the right
-            for (var i = (value[0][1] + offset); i <= yMax; i += offset) {
-              var temp = plotTheLinesForY(i, tanRatio, value[0][0], value[1][0]);
-              particles.push(temp);
-              if (index == 0) {
-                particles.push([
-                  [value[0][0], value[0][1]],
-                  [temp[0][0], temp[0][1]]
-                ]);
-              }
+            //find the destination coordinate of randomly plotted points
+            function plotTheLinesForY(y1, ratio, x1, x2) {
+              var temp = [],
+                y2 = y1 - (ratio * (x2 - x1));
+              temp.push([x1, y1]);
+              temp.push([x2, y2]);
+              return temp;
             }
-          }
+            //find the destination coordinate of randomly plotted points
+            function plotTheLinesForX(x1, ratio, y1, y2) {
+              var temp = [],
+                x2 = ((y1 - y2) / ratio) + x1;
+              temp.push([x1, y1]);
+              temp.push([x2, y2]);
+              return temp;
+            }
 
-          //adding the actual line 
-          particles.push(value);
-
-          return particles;
-
-        }
-
-        //find the destination coordinate of randomly plotted points
-        function plotTheLinesForY(y1, ratio, x1, x2) {
-          var temp = [],
-            y2 = y1 - (ratio * (x2 - x1));
-          temp.push([x1, y1]);
-          temp.push([x2, y2]);
-          return temp;
-        }
-        //find the destination coordinate of randomly plotted points
-        function plotTheLinesForX(x1, ratio, y1, y2) {
-          var temp = [],
-            x2 = ((y1 - y2) / ratio) + x1;
-          temp.push([x1, y1]);
-          temp.push([x2, y2]);
-          return temp;
-        }
 
   });
 
-  }
+}
 
   clipDimensions = window.location.search.substring(1).split(",");
   //checking until the url contains display dimension
@@ -729,6 +732,8 @@ svg#topSvg{
   })()
   
   createGraphics();
+
+
     </script>
   </body>
   </html>

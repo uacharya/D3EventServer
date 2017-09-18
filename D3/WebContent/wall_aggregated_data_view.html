@@ -137,7 +137,7 @@ svg#topSvg{
         maximumX = dimension[1][0];
 
     //load and display the World
-    d3.json("http://127.0.0.1:8085/world-map.json", function(error, topology) {
+    d3.json("http://10.29.3.2:8085/world-map.json", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -162,7 +162,7 @@ svg#topSvg{
         }), function(error, data) {
 
           if (data.responseText == "ready") {
-            getStreamFLowData(dataDate+","+node+"_raw");
+            getStreamFLowData(dataDate+","+node+"_aggregated");
             dataDate++;
             clearInterval(timeID);
           }
@@ -182,7 +182,7 @@ svg#topSvg{
       function getStreamFLowData(date) {
 
 
-        d3.json("http://127.0.0.1:8085/data_" + date + ".csv", function(error, response) {
+        d3.json("http://10.29.3.2:8085/data_" + date + ".json", function(error, response) {
 
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = undefined; //clearing the last selected from previous date data
@@ -206,7 +206,16 @@ svg#topSvg{
               allFrames = {}, //variable to cache original images for animation
               currentStateImages = {}; // current image to draw in the canvas based on user input
 
-          /* making sure if empty data is send return immediately*/
+
+          if(response==""){
+              sendEvent(JSON.stringify(
+                {
+                  click:true
+                }));
+            console.log("i have sent");
+
+            return;
+          }
 
           //getting the upper bound of flow to bound arrow head basd on number of data points in the flow
           var upperBound = response['upper_bound'];
@@ -246,7 +255,7 @@ svg#topSvg{
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
-              .attr("xlink:href", "C:\\Users\\walluser\\Desktop\\testing\\station.png")
+              .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr("x", function(d, i) {
                 return projection([d.lon, d.lat])[0] - 10;
               })
@@ -348,7 +357,7 @@ svg#topSvg{
             });
 
             totalPathData.push(streamLineData); //adding each stream line flow between two stations to total flows
-                        }
+            }
 
             requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
 
@@ -363,9 +372,12 @@ svg#topSvg{
             totalSelection = [],
             holder = 1;
 
+          console.log("inside this function");
           if (windFlowIDS.length == 0) {
             return;
           }
+
+          console.log("here");
          
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {

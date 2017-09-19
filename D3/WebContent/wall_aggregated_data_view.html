@@ -16,7 +16,6 @@
         }else if(dimension.data=='reset'){
           if(reset==false){
               reset=true;
-              console.log(reset);
           }
         }else {
             recieveEventData(JSON.parse(dimension.data));
@@ -34,7 +33,7 @@
   <style>
   text {
   text-anchor: middle;
-  font: 13px sans-serif;
+  font: 30px sans-serif;
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
 body { margin: 0; 
@@ -219,10 +218,10 @@ svg#topSvg{
                   click:true,
                   reset:true
                 }));
-            console.log("i have sent");
-
+    
             return;
           }
+
 
           //getting the upper bound of flow to bound arrow head basd on number of data points in the flow
           var upperBound = response['upper_bound'];
@@ -235,12 +234,12 @@ svg#topSvg{
           for (var key in response) {
 
             var wind_flow_data = response[key], //values of the wind flow
-              station_id = key, //value of the key for that station to station wind flow
-              streamLineData = {
-                id: station_id,
-                active: 0,
-                value: []
-              }; //object for storing the value of lines in that particular wind flow between stations
+                station_id=key,
+                streamLineData = {
+                  id: station_id,
+                  active: 0,
+                  value: []
+                }; //object for storing the value of lines in that particular wind flow between stations
 
             windFlowIDS.push(station_id); //adding stations id so that they can be used later on for interaction and animation
 
@@ -431,7 +430,7 @@ svg#topSvg{
               canvas.clearRect(0, 0, width, height);
             }
               
-            },200);
+            },500);
            
           }else{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines

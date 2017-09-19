@@ -209,12 +209,19 @@ public class Bilevel {
 	 * This function just returns a property associated with each websocket
 	 * object created
 	 * 
-	 * @return
+	 * @return boolean stating should click interaction be allowed in all nodes or not
 	 */
 	public boolean getAllowInteraction() {
 		return this.allowClick;
 	}
 
+	
+	
+	/**
+	 * This function just returns a property associated with each websocket
+	 * object created
+	 * @return boolean stating whether reset canvas or not in all nodes
+	 */
 	public boolean resetCanvasOrNot() {
 		return this.resetCanvas;
 	}

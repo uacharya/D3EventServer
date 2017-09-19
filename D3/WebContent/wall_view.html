@@ -13,7 +13,11 @@
     webSocket.onmessage = function(dimension){
         if(dimension.data.indexOf("?")>=0){
             window.history.replaceState({},document.Title,dimension.data);
-        }else{
+        }else if(dimension.data=='reset'){
+          if(reset==false){
+              reset=true;
+          }
+        }else {
             recieveEventData(JSON.parse(dimension.data));
         }
     }
@@ -29,7 +33,7 @@
   <style>
   text {
   text-anchor: middle;
-  font: 13px sans-serif;
+  font: 30px sans-serif;
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
 body { margin: 0px; 
@@ -60,7 +64,7 @@ svg#topSvg{
      <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node;
+    var clipDimensions,node,reset=false;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -146,7 +150,7 @@ svg#topSvg{
         .attr("stroke-width", 3);
 
 
-      var dataDate = 19291128;
+   var dataDate = 20140130;
 
 
       var timeID = setInterval(function() {
@@ -179,7 +183,7 @@ svg#topSvg{
         d3.csv("http://10.29.3.2:8085/data_" + date + ".csv", function(error, response) {
 
             cancelAnimationFrame(requestID); //stopping the old animation
-            lastSelected = undefined; //clearing the last selected from previous date data
+            lastSelected = []; //clearing the last selected from previous date data
 
             d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
@@ -192,7 +196,8 @@ svg#topSvg{
             //sending server to not allow interaction when every single client doesnot register click event in server
             sendEvent(JSON.stringify(
             {
-              click:false
+              click:false,
+              reset:false
             }));
 
             frame = 0; //frame counter total equals 60
@@ -207,7 +212,8 @@ svg#topSvg{
           if(data.length==0){
             sendEvent(JSON.stringify(
                 {
-                  click:true
+                  click:true,
+                  reset:true
                 }));
             return;
           }
@@ -386,12 +392,42 @@ svg#topSvg{
           }
           g.selectAll("image#" + subString).attr("active", newOpacity);
 
-          if (newOpacity == 1) {
-            lastSelected = totalSelection;
+          if(totalSelection.length==0){
+            lastSelected=[];
+          }else{
+            if(newOpacity==1){
+              lastSelected = totalSelection;
+            }else{
+              lastSelected=[];
+            }
           }
-          reCreateImages(); //creating new images for animation
-          cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
-          requestID = requestAnimationFrame(animate); //start the animation again
+         
+          var verdict = reCreateImages(); //creating new images for animation
+
+          if(verdict==1){
+
+            setTimeout(function(){
+              if(reset==true){
+              cancelAnimationFrame(requestID);
+              currentStateImages=allFrames;
+              requestID=requestAnimationFrame(animate);
+
+              reset=false;
+              sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+          }else{
+              cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+              canvas.clearRect(0, 0, width, height);
+            }
+              
+            },500);
+           
+          }else{
+            cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+            requestID = requestAnimationFrame(animate); //start the animation again
+          } 
 
         }
 
@@ -482,6 +518,7 @@ svg#topSvg{
         function reCreateImages() {
 
           var f = 0,
+            clearCanvas=true,
             tempImages = {};
 
           while (f < 30) {
@@ -502,6 +539,7 @@ svg#topSvg{
 
               if (totalPathData[i]['active'] == 1) {
                 var temp = totalPathData[i].value,
+                  clearCanvas=false,
                   isLast = lastSelected.includes(i);
 
                 for (var j = 0; j < temp.length; j++) {
@@ -541,6 +579,14 @@ svg#topSvg{
               }
             }
 
+            if(clearCanvas==true){
+              sendEvent(JSON.stringify(
+              {
+                reset:true
+              }));
+              return 1;
+            }
+
             offScreenContext.lineWidth = 2;
             offScreenContext.strokeStyle = "#FD5959";
             offScreenContext.stroke(linePath);
@@ -560,8 +606,16 @@ svg#topSvg{
 
           }
 
+          if(clearCanvas==false){
+            sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+          }
+
           currentStateImages = tempImages;
           tempImages = undefined;
+          return 0;
 
         }
         //this function creates new parts of a curve based on their location in the new projection

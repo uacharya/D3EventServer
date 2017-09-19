@@ -13,7 +13,12 @@
     webSocket.onmessage = function(dimension){
         if(dimension.data.indexOf("?")>=0){
             window.history.replaceState({},document.Title,dimension.data);
-        }else{
+        }else if(dimension.data=='reset'){
+          if(reset==false){
+              reset=true;
+              console.log(reset);
+          }
+        }else {
             recieveEventData(JSON.parse(dimension.data));
         }
     }
@@ -60,7 +65,7 @@ svg#topSvg{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node;
+    var clipDimensions,node,reset=false;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -185,7 +190,7 @@ svg#topSvg{
         d3.json("http://10.29.3.2:8085/data_" + date + ".json", function(error, response) {
 
             cancelAnimationFrame(requestID); //stopping the old animation
-            lastSelected = undefined; //clearing the last selected from previous date data
+            lastSelected = []; //clearing the last selected from previous date data
 
             d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
@@ -198,7 +203,8 @@ svg#topSvg{
             //sending server to not allow interaction when every single client doesnot register click event in server
             sendEvent(JSON.stringify(
             {
-              click:false
+              click:false,
+              reset:false
             }));
             
 
@@ -210,7 +216,8 @@ svg#topSvg{
           if(response==""){
               sendEvent(JSON.stringify(
                 {
-                  click:true
+                  click:true,
+                  reset:true
                 }));
             console.log("i have sent");
 
@@ -222,7 +229,7 @@ svg#topSvg{
 
           delete response['upper_bound']; //removing this key as it would cause one more unnecessay iteration
 
-          var arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 1]).clamp(true); //bounding the arrow size according to lines in a flow
+          var arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 5]).clamp(true); //bounding the arrow size according to lines in a flow
           // lineColor = d3.scaleLinear().domain([1,highestVelocity]).range(["#FF0000","#800000"]); //bounding the color of curves based on wind velocity from pure red to maroon
           //looping through the groups based on keys
           for (var key in response) {
@@ -338,7 +345,7 @@ svg#topSvg{
                       .attr("class", station_id)
                       .attr("active", 0)
                       .attr('velocity', velocity)
-                      .style("stroke-width", 2)
+                      .style("stroke-width", 3)
                       .style("stroke", "white")
                       .style("opacity", 0)
                       .on("mouseover", function(d, i) {
@@ -372,12 +379,10 @@ svg#topSvg{
             totalSelection = [],
             holder = 1;
 
-          console.log("inside this function");
+
           if (windFlowIDS.length == 0) {
             return;
           }
-
-          console.log("here");
          
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {
@@ -396,13 +401,43 @@ svg#topSvg{
           }
           g.selectAll("image#" + subString).attr("active", newOpacity);
 
-          if (newOpacity == 1) {
-            lastSelected = totalSelection;
+          if(totalSelection.length==0){
+            lastSelected=[];
+          }else{
+            if(newOpacity==1){
+              lastSelected = totalSelection;
+            }else{
+              lastSelected=[];
+            }
           }
-          reCreateImages(); //creating new images for animation
-          cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
-          requestID = requestAnimationFrame(animate); //start the animation again
+         
+          var verdict = reCreateImages(); //creating new images for animation
 
+          if(verdict==1){
+
+            setTimeout(function(){
+              if(reset==true){
+              cancelAnimationFrame(requestID);
+              currentStateImages=allFrames;
+              requestID=requestAnimationFrame(animate);
+
+              reset=false;
+              sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+          }else{
+              cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+              canvas.clearRect(0, 0, width, height);
+            }
+              
+            },200);
+           
+          }else{
+            cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+            requestID = requestAnimationFrame(animate); //start the animation again
+          } 
+ 
         }
 
 
@@ -495,6 +530,7 @@ svg#topSvg{
         function reCreateImages() {
 
           var f = 0,
+            clearCanvas=true,
             tempImages = {};
 
           while (f < 30) {
@@ -514,8 +550,9 @@ svg#topSvg{
             for (var i = 0; i < totalPathData.length; i++) {
 
               if (totalPathData[i]['active'] == 1) {
-                var temp = totalPathData[i].value,
-                  isLast = lastSelected.includes(i);
+                var temp = totalPathData[i].value,                
+                    clearCanvas=false,
+                    isLast = lastSelected.includes(i);
 
                 for (var j = 0; j < temp.length; j++) {
                   var obj = temp[j],
@@ -554,6 +591,14 @@ svg#topSvg{
               }
             }
 
+            if(clearCanvas==true){
+              sendEvent(JSON.stringify(
+              {
+                reset:true
+              }));
+              return 1;
+            }
+
             offScreenContext.lineWidth = 2;
             offScreenContext.strokeStyle = "#FD5959";
             offScreenContext.stroke(linePath);
@@ -570,11 +615,20 @@ svg#topSvg{
 
             tempImages[f + 1] = offScreenCanvas;
             f++;
-
+            //just in case interaction doesnot contain any data clear canvas and show nothing
           }
+
+          if(clearCanvas==false){
+            sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+          }
+
 
           currentStateImages = tempImages;
           tempImages = undefined;
+          return 0;
 
         }
 

@@ -20,16 +20,19 @@ public class Bilevel {
 	private static final double height = 6480;
 	private static final double width = 11520;
 	private boolean allowClick;
+	private boolean resetCanvas;
 
 	// list of all the sessions into one container and all instances in one
 	private static final Set<Session> allSessions = Collections.synchronizedSet(new HashSet<Session>());
 	private static final Set<Bilevel> allInstances = Collections.synchronizedSet(new HashSet<Bilevel>());
-	
+
 	/**
-	 * This function creates an websocket instance with additional property associated with each object
+	 * This function creates an websocket instance with additional properties
+	 * associated with each object
 	 */
-	public Bilevel(){
-		this.allowClick=false;	
+	public Bilevel() {
+		this.allowClick = false;
+		this.resetCanvas = false;
 	}
 
 	/**
@@ -58,7 +61,8 @@ public class Bilevel {
 	 */
 	@OnMessage
 	public void handleMessage(Session session, String message) {
-		// getting ip address of the browser that has sent a message from web filter used for the server
+		// getting ip address of the browser that has sent a message from web
+		// filter used for the server
 		String IPAddress = session.getRequestParameterMap().get("IP").get(0);
 		System.out.println("the ip address for this connection is " + IPAddress);
 		// message received from either one of the client browser
@@ -67,16 +71,44 @@ public class Bilevel {
 		// belonging to screen in particular node
 		if (message.contains("X=")) {
 			sendDisplayDimension(session, IPAddress, message);
-		}else if (message.contains("click")){
-			this.allowClick = message.substring(message.indexOf(":")+1,message.length()-1).equals("false")?false:true;
-		} else {
+		} else if (message.contains("click") && message.contains("reset")) {
+			this.allowClick = message.substring(message.indexOf(":") + 1, message.indexOf("reset")).equals("false")
+					? false : true;
+			System.out.println(this.allowClick);
+			this.resetCanvas = message.substring(message.lastIndexOf(":") + 1, message.length() - 1).equals("false")
+					? false : true;
+			System.out.println(this.resetCanvas);
 			synchronized (allInstances) {
-				for(Bilevel e:allInstances){
-					if(e.getAllowInteraction()==false){
+				for (Bilevel e : allInstances) {
+					if (e.resetCanvasOrNot() == false) {
 						return;
 					}
 				}
-				sendMessageToAll(message);// sending events to all				
+				sendMessageToAll("reset");// sending events to all
+			}
+		} else if (message.contains("click")) {
+			this.allowClick = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
+					? false : true;
+			System.out.println(this.allowClick);
+		} else if (message.contains("reset")) {
+			this.resetCanvas = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
+					? false : true;
+			synchronized (allInstances) {
+				for (Bilevel e : allInstances) {
+					if (e.resetCanvasOrNot() == false) {
+						return;
+					}
+				}
+				sendMessageToAll("reset");// sending events to all
+			}
+		} else {
+			synchronized (allInstances) {
+				for (Bilevel e : allInstances) {
+					if (e.getAllowInteraction() == false) {
+						return;
+					}
+				}
+				sendMessageToAll(message);// sending events to all
 			}
 		}
 
@@ -94,12 +126,11 @@ public class Bilevel {
 		synchronized (allSessions) {
 			for (Session ssn : allSessions) {
 				if (ssn.isOpen()) {
-					try {
-						ssn.getBasicRemote().sendText(message);
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					} //before synchronously message was sent blocking until message was sent
+					ssn.getAsyncRemote().sendText(message); // before
+															// synchronously
+															// message was sent
+															// blocking until
+															// message was sent
 				}
 			}
 		}
@@ -145,40 +176,47 @@ public class Bilevel {
 		if (IPAddress.equalsIgnoreCase("10.29.3.2")) {
 			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
 			if (browserLocation >= 0 && browserLocation < 3840) {
-				dimension = "?0,"+ (int) Math.ceil((height / 3) * 2);
+				dimension = "?0," + (int) Math.ceil((height / 3) * 2);
 			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?"+(int) Math.ceil(width / 3) +","+ (int) Math.ceil((height / 3) * 2);
+				dimension = "?" + (int) Math.ceil(width / 3) + "," + (int) Math.ceil((height / 3) * 2);
 			} else if (browserLocation >= 7680) {
-				dimension = "?"+(int) Math.ceil((width / 3) * 2) +","+ (int) Math.ceil((height / 3) * 2);
+				dimension = "?" + (int) Math.ceil((width / 3) * 2) + "," + (int) Math.ceil((height / 3) * 2);
 			}
 		} else if (IPAddress.equalsIgnoreCase("10.29.2.184")) {
 			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
 			if (browserLocation >= 0 && browserLocation < 3840) {
-				dimension = "?0,"+ (int) Math.ceil(height / 3);
+				dimension = "?0," + (int) Math.ceil(height / 3);
 			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?"+(int) Math.ceil(width / 3)+","+ (int) Math.ceil(height / 3);
+				dimension = "?" + (int) Math.ceil(width / 3) + "," + (int) Math.ceil(height / 3);
 			} else if (browserLocation >= 7680) {
-				dimension = "?"+(int) Math.ceil((width / 3) * 2) +","+ (int) Math.ceil(height / 3);
+				dimension = "?" + (int) Math.ceil((width / 3) * 2) + "," + (int) Math.ceil(height / 3);
 			}
 
-		} else if (IPAddress.equalsIgnoreCase("10.29.2.109")){
+		} else if (IPAddress.equalsIgnoreCase("10.29.2.109")) {
 			int browserLocation = Integer.parseInt(monitorLocation.split("=")[1]);
 			if (browserLocation >= 0 && browserLocation < 3840) {
 				dimension = "?0,0";
 			} else if (browserLocation >= 3840 && browserLocation < 7680) {
-				dimension = "?"+(int) Math.ceil(width / 3)+",0";
+				dimension = "?" + (int) Math.ceil(width / 3) + ",0";
 			} else if (browserLocation >= 7680) {
-				dimension = "?"+(int) Math.ceil((width / 3) * 2)+",0";
+				dimension = "?" + (int) Math.ceil((width / 3) * 2) + ",0";
 			}
 		}
 		return dimension;
 	}
-	
-	/** This function just returns a property associated with each websocket object created
+
+	/**
+	 * This function just returns a property associated with each websocket
+	 * object created
+	 * 
 	 * @return
 	 */
-	public boolean getAllowInteraction(){
+	public boolean getAllowInteraction() {
 		return this.allowClick;
+	}
+
+	public boolean resetCanvasOrNot() {
+		return this.resetCanvas;
 	}
 
 	/**

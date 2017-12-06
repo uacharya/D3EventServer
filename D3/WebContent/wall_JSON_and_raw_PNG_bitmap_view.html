@@ -17,7 +17,11 @@
     webSocket.onmessage = function(dimension){
         if(dimension.data.indexOf("?")>=0){
             window.history.replaceState({},document.Title,dimension.data);
-        }else{
+        }else if(dimension.data=='reset'){
+          if(reset==false){
+              reset=true;
+          }
+        }else {
             recieveEventData(JSON.parse(dimension.data));
         }
     }
@@ -33,7 +37,7 @@
   <style>
   text {
   text-anchor: middle;
-  font: 13px sans-serif;
+  font: 30px sans-serif;
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
 }
 
@@ -74,8 +78,7 @@ svg#topSvg{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-
-    var clipDimensions,node;
+    var clipDimensions,node,reset=false;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -136,7 +139,7 @@ svg#topSvg{
     var path = d3.geoPath().projection(projection);
 
     //load and display the World
-    d3.json("http://127.0.0.1:8085/world-map.json", function(error, topology) {
+    d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -148,17 +151,17 @@ svg#topSvg{
         .attr("fill", "#e1bb9e")
         .attr("stroke-width", 1);
 
-      var dataDate = 19291128;
+    var dataDate = 19291128;
 
 
-      var timeID = setInterval(function() {
+     var timeID = setInterval(function() {
         d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+          op:"CHECK",
           date: dataDate,
-          type: "bitmap"
+          type: "BITMAP"
         }), function(error, data) {
-
           if (data.responseText == "ready") {
-            getStreamFLowData(dataDate+","+node+"_bitmap");
+            getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=BITMAP");
             dataDate++;
             clearInterval(timeID);
           }
@@ -175,38 +178,48 @@ svg#topSvg{
           pathData,//list to hold all the stream line flow  line data for a particular date
           url;
 
-      function getStreamFLowData(date) {
+      function getStreamFLowData(query) {
+
+        cancelAnimationFrame(requestID); //stopping the old animation
+        lastSelected = []; //clearing the last selected from previous date data
+
+        d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
+        d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
+        d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new datacomes in
+
+        windFlowIDS = [];
+
+        //sending server to not allow interaction when every single client doesnot register click event in server
+        sendEvent(JSON.stringify(
+        {
+          click:false,
+          reset:false
+        }));
+
+        frame = 0; //frame counter total equals 60
+        originalImages = {}; //variable to cache original images for animation
+        currentStateImages = {}; // current image to draw in the canvas based on user input
 
         //setting response type as blob is making the pickled binary data unparsable
-        d3.json("http://127.0.0.1:8085/data_" + date).mimeType('application/json')
+        d3.json("http://10.29.3.2:8085/data.json" + query+"-JSON").mimeType('application/json')
           .get(function(error, response) {
             if (error) {
               console.log(error)
               return;
             }
+            // console.log("the returned data is"+response);
+
+            if(response==""){
+              sendEvent(JSON.stringify(
+                {
+                  click:true,
+                  reset:true
+                }));
     
-            d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
-            d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
-            d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new datacomes in
-
-            cancelAnimationFrame(requestID); //stopping the old animation
-            lastSelected = undefined; //clearing the last selected from previous date data
-            windFlowIDS = [];
-
-            //sending server to not allow interaction when every single client doesnot register click event in server
-            sendEvent(JSON.stringify(
-            {
-              click:false
-            }));
-
-            frame = 0; //frame counter total equals 60
-            originalImages = {}; //variable to cache original images for animation
-            currentStateImages = {}; // current image to draw in the canvas based on user input
+            return;
+            }
 
             pathData = response['path'];
-
-            /* make a return statement just in case the data is empty*/
-
             var stationData = response['stations'];
 
             //adding stations as image and adding on click event for those stations
@@ -214,14 +227,14 @@ svg#topSvg{
                 return d[0];
               })
               .attr('active', 0)
-              .attr("xlink:href", "C:\\Users\\walluser\\Desktop\\testing\\station.png")
+              .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr('x', function(d, i) {
                 return projection([+d[2], +d[1]])[0] - 10;
               }).attr('y', function(d, i) {
                 return projection([+d[2], +d[1]])[1];
               }).attr("width", 20).attr("height", 20)
               .on('mouseover', function(d, i) {
-                topSvg.append("text").attr("dy", "2em").attr("transform", "translate(" + d3.mouse(this) + ")").text(d[0]);
+                topSvg.append("text").style("z-index", 10).attr("dy", "2em").attr("transform", "translate(" + d3.mouse(this) + ")").text(d[0]);
               }).on("mouseout", function(d, i) {
                 topSvg.selectAll("text").remove();
               }).on("click", function() {
@@ -273,7 +286,7 @@ svg#topSvg{
             });
 
 
-            d3.request("http://127.0.0.1:8085/data_" + date + 'PNGS').mimeType('image/png')
+            d3.request("http://10.29.3.2:8085/data"+query+"-PNG").mimeType('image/png')
               .responseType('arraybuffer').get(function(error, xhr) {
 
                 if (error) {
@@ -281,6 +294,14 @@ svg#topSvg{
                   return;
                 }
                 var binaryResponse = xhr.response;
+
+                // console.log("the returned data is"+binaryResponse);
+
+                if(!xhr.response.byteLength){
+                  // console.log("inside no byte array");
+                  return;
+                }
+
                 url = [];
 
 
@@ -288,8 +309,8 @@ svg#topSvg{
                   dataBuffer = new DataView(binaryResponse);
                
                 while (index < binaryResponse.byteLength) {
-                  var size = dataBuffer.getUint16(index, false);
-                  index = index + 2;
+                  var size = dataBuffer.getUint32(index, false);
+                  index = index + 4;
 
                   var temp = binaryResponse.slice(index, index = index + size),
                     b = new Blob([temp], {
@@ -298,6 +319,7 @@ svg#topSvg{
 
                   url.push(window.URL.createObjectURL(b));
                 }
+
                 dataBuffer = undefined; //pointing the buffer to undefined to free original buffer data
 
                 requestID = requestAnimationFrame(draw);
@@ -309,8 +331,7 @@ svg#topSvg{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
-            totalSelection = [],
-            holder = 1;
+            totalSelection = [];
 
           if (windFlowIDS.length == 0) {
             return;
@@ -327,18 +348,49 @@ svg#topSvg{
           for (var j = 0; j < totalSelection.length; j++) {
             var index = totalSelection[j],
               streamLineID = windFlowIDS[index];
-            totalPathData[index].active = newOpacity;
+            pathData[index].active = newOpacity;
             g.selectAll("line." + streamLineID).attr("active", newOpacity);
 
           }
           g.selectAll("image#" + subString).attr("active", newOpacity);
 
-          if (newOpacity == 1) {
-            lastSelected = totalSelection;
+          if(totalSelection.length==0){
+            lastSelected=[];
+          }else{
+            if(newOpacity==1){
+              lastSelected = totalSelection;
+            }else{
+              lastSelected=[];
+            }
           }
-          reCreateImages(); //creating new images for animation
-          cancelAnimationFrame(requestID); //stopping the old animation to remove some stream lines
-          requestID = requestAnimationFrame(animate); //start the animation again
+
+
+          var verdict = reCreateImages(); //creating new images for animation
+
+          if(verdict==1){
+            setTimeout(function(){
+              if(reset==true){
+              cancelAnimationFrame(requestID);
+              currentStateImages=originalImages;
+              requestID=requestAnimationFrame(draw);
+
+              reset=false;
+              sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+
+              }else{
+              cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
+              }
+              
+            },500);
+           
+          }else{
+            cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
+            requestID = requestAnimationFrame(draw); //start the animation again
+          } 
 
         }
 
@@ -353,7 +405,7 @@ svg#topSvg{
                     //calling a self enclosing function with the actual frame iteration number before the image is fully loaded so that all frames are created 
                     img.onload = (function(f) {
                       return function() {
-                        canvas.clearRect(0, 0, width, height);
+                        canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
                         canvas.drawImage(this, 0, 0);
                         originalImages[f] = this;
                         currentStateImages[f] = this;
@@ -369,7 +421,7 @@ svg#topSvg{
 
                     img.src = url[frame];
                   } else {
-                    canvas.clearRect(0, 0, width, height);
+                    canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
                     canvas.drawImage(currentStateImages[frame], 0, 0);
 
                   }
@@ -385,6 +437,7 @@ svg#topSvg{
                   }
                   
                   var f = 0,
+                    clearCanvas=true,
                     tempImages = {};
 
                   while (f < 30) {
@@ -405,6 +458,7 @@ svg#topSvg{
                     for (var i = 0; i < pathData.length; i++) {
                       if (pathData[i]['active'] == 1) {
                         var temp = pathData[i][windFlowIDS[i]],
+                          clearCanvas=false,
                           h = pathData[i]['h'],isLast = lastSelected.includes(i);
 
 
@@ -493,6 +547,14 @@ svg#topSvg{
                       }
                     }
 
+                    if(clearCanvas==true){
+                      sendEvent(JSON.stringify(
+                      {
+                        reset:true
+                      }));
+                      return 1;
+                    }
+
                     offScreenContext.lineWidth = 2;
                     offScreenContext.strokeStyle = "#FD5959";
                     offScreenContext.stroke(linePath);
@@ -512,8 +574,16 @@ svg#topSvg{
 
                   }
 
+                  if(clearCanvas==false){
+                    sendEvent(JSON.stringify(
+                      {
+                        reset:false
+                      }));
+                  }
+
                   currentStateImages = tempImages;
                   tempImages = undefined;
+                  return 0;
 
                 }
 

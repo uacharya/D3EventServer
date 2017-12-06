@@ -154,7 +154,7 @@ svg#topSvg{
         .attr("stroke-width", 3);
 
 
-   var dataDate = 20140130;
+    var dataDate = 19291128;
 
 
       var timeID = setInterval(function() {
@@ -223,7 +223,7 @@ svg#topSvg{
           var upperBound = d3.max(data, function(item) {
               return item["values"].length;
             }),
-            arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 1]).clamp(true); //bounding the arrow size according to lines in a flow
+            arrowSize = d3.scaleLinear().domain([1, upperBound]).range([10, 5]).clamp(true); //bounding the arrow size according to lines in a flow
           // lineColor = d3.scaleLinear().domain([1,highestVelocity]).range(["#FF0000","#800000"]); //bounding the color of curves based on wind velocity from pure red to maroon
           //looping through the groups based on keys
           for (var i = 0; i < data.length; i++) {

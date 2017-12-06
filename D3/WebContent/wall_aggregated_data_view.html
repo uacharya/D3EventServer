@@ -144,6 +144,7 @@ svg#topSvg{
       var dimension = mercatorBounds(projection, maxlat),
         minimumX = dimension[0][0],
         maximumX = dimension[1][0];
+    console.log("the required data for server is ",minimumX,maximumX);
 
     //load and display the World
     d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
@@ -190,8 +191,7 @@ svg#topSvg{
 
       function getStreamFLowData(query) {
 
-
-        d3.csv("http://10.29.3.2:8085/data.csv"+query, function(error, response) {
+        d3.json("http://10.29.3.2:8085/data.json"+query, function(error, response) {
 
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = []; //clearing the last selected from previous date data
@@ -380,8 +380,7 @@ svg#topSvg{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
-            totalSelection = [],
-            holder = 1;
+            totalSelection = [];
 
 
           if (windFlowIDS.length == 0) {
@@ -465,7 +464,7 @@ svg#topSvg{
               arrowPath = new Path2D(); //this path for drawing arrow head
 
             var t = (frame * 33.33) / 1000;
-            canvas.clearRect(0, 0, width, height);
+            canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
             //drawing the lines
             for (var i = 0; i < totalPathData.length; i++) {
               var flow = totalPathData[i];
@@ -522,7 +521,7 @@ svg#topSvg{
               }));
             } //allowing to interact with data after all 60 frames has been 
             } else {
-              canvas.clearRect(0, 0, width, height);
+              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               canvas.drawImage(currentStateImages[frame], 0, 0);
             }
 

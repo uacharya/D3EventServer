@@ -77,15 +77,15 @@ public class Bilevel {
 			System.out.println(this.allowClick);
 			this.resetCanvas = message.substring(message.lastIndexOf(":") + 1, message.length() - 1).equals("false")
 					? false : true;
-			System.out.println(this.resetCanvas);
-			synchronized (allInstances) {
-				for (Bilevel e : allInstances) {
-					if (e.resetCanvasOrNot() == false) {
-						return;
-					}
-				}
-				sendMessageToAll("reset");// sending events to all
-			}
+	
+//			synchronized (allInstances) {
+//				for (Bilevel e : allInstances) {
+//					if (e.resetCanvasOrNot() == false) {
+//						return;
+//					}
+//				}
+//				sendMessageToAll("reset");// sending events to all
+//			}
 		} else if (message.contains("click")) {
 			this.allowClick = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
 					? false : true;
@@ -122,6 +122,7 @@ public class Bilevel {
 	 *            event data to send
 	 */
 	private void sendMessageToAll(String message) {
+		System.out.println("the data to send is"+message);
 		// iterate over all active sessions and send the same event
 		synchronized (allSessions) {
 			for (Session ssn : allSessions) {

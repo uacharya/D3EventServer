@@ -5,6 +5,7 @@
   <title>Streamline animation</title>
   <meta name="Author" content="Ujjwal Acharya">
   <meta name="Description" content="Animating Wind Flow">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <script type="text/javascript">
     var recieveEventData;
 
@@ -15,12 +16,18 @@
     }
 
     webSocket.onmessage = function(dimension){
+ 
         if(dimension.data.indexOf("?")>=0){
             window.history.replaceState({},document.Title,dimension.data);
         }else if(dimension.data=='reset'){
           if(reset==false){
               reset=true;
           }
+        }else if(dimension.data=='clearInputField'){
+            selectFlow(null,true);
+        }else if(dimension.data.includes('fetch')){
+          let temp = JSON.parse(dimension.data)
+          selectFlow(temp['fetch']);
         }else {
             recieveEventData(JSON.parse(dimension.data));
         }
@@ -35,10 +42,13 @@
 
     </script>
   <style>
-  text {
+  text.stationName {
   text-anchor: middle;
-  font: 30px sans-serif;
-  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+  font: 30px Verdana;
+}
+
+text.paOrRe{
+  font: 25px Verdana;
 }
 body { margin: 0; 
       padding: 0px;
@@ -61,15 +71,110 @@ svg#topSvg{
   z-index: 2;
 }
 
+/* get user asked data and fetch it from server elements */
+
+#dateSelector{
+  position: absolute;
+  top:320px;
+  left:220px;
+  color: #555;
+  background-image: url(./musica-searcher.svg);
+  background-repeat: no-repeat;
+  background-size: 50px;
+  box-shadow: 1px 1px 1px rgba(0,0,0,0.63);
+  z-index: 3;
+  border:none;
+  border-radius: 10px;
+  font-size: 50px;
+  background-position: 10px 45px;
+  padding-left: 80px;
+}
+
+.glyphicon-remove:hover,.glyphicon-play-circle:hover{
+  cursor: pointer;
+}
+
+.glyphicon-play-circle{
+  position: absolute;
+  top:350px;
+  left:1000px;
+  font-size:70px;
+  z-index: 3;
+}
+
+.glyphicon-remove{
+  position: absolute;
+  top:350px;
+  left:1100px;
+  font-size:70px;
+  z-index: 3;
+}
+
+.userInput{
+  display: none;
+}
+
+#dates{
+  font-size:100px;
+}
+/************************************/
+
+/*elements for giving context of the view and more info*/
+#context{
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+  font-family: mplus-2p-light-sub,Helvetica,arial,freesans,clean,sans-serif;
+  font-size: 140px;
+  color: #555;
+  border-bottom: 1px solid black;
+  padding:0px 0px 5px 0px;
+  margin:0px;
+}
+
+#context:hover{
+  cursor: pointer;
+}
+
+#currentDate{
+  font-family: Verdana;
+  color: #555;
+  padding:0px;
+  margin:10px 0px 0px;
+  text-shadow: none;
+  font-size: 90px;
+}
+
+#viewDetail{
+  background-color: rgba(5, 10, 30, 0.85);
+  opacity: 1;
+  margin: 0px;
+  padding: 0px;
+  text-shadow: none;
+  color:#eeeeee;
+  font-weight: normal;
+  font-size: 0.8em;
+  font-family: mplus-2p-light-sub,Helvetica,arial,freesans,clean,sans-serif;
+  display: none;
+}
+
+.infoElements{
+  list-style-type:none;
+}
+
+
   </style>
 </head>
   <body>
+  <input type='text' id='dateSelector' class='userInput' list='dates' placeholder='Select a date from the list' style=" width:730px;height:140px" onkeydown="return false;" />
+  <span class="glyphicon glyphicon-play-circle userInput" id="fetchDateData"></span>
+  <span class="glyphicon glyphicon-remove userInput" id="clearDateTextField"></span>
+    <datalist id="dates">
+    </datalist>
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
     <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,reset=false;
+    var clipDimensions,node,selectFlow,reset=false;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -102,7 +207,6 @@ svg#topSvg{
       .attr("preserveAspectRatio","xMinYMin meet")
       .style("z-index", 0)
       .style("background-color", "#1ca2ba");
-    
 
     svg.append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",viewBoxWidth).attr("height",viewBoxHeight);
 
@@ -159,13 +263,40 @@ svg#topSvg{
         .attr("fill", "#e1bb9e")
         .attr("stroke-width", 1);
 
+      if(node==2){
+
+        let viewContext = d3.select('body').append('h1').attr('id','context').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).text('Global Wind Flow Simulation').on('click',()=>{
+         
+          if(document.getElementById('viewDetail').classList.contains('hidden')){
+            document.getElementById('viewDetail').style.display='block';
+            document.getElementById('viewDetail').classList.toggle('hidden');
+            document.getElementById('currentDate').style.display='none';
+          }else{
+            document.getElementById('viewDetail').style.display='none';
+            document.getElementById('viewDetail').classList.toggle('hidden');
+            document.getElementById('currentDate').style.display='block';
+          }
+
+       });
+
+       viewContext.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px').style('z-index',3);
+
+       let viewDetail = viewContext.append('div').attr('id','viewDetail').attr('class','infoContainer hidden').style('position','absolute').style('left','0px').style('top','140px').style('z-index',3);
+
+       let viewList= viewDetail.append('ul').attr('id','viewInfo').attr('class','infoElements').style('z-index',3);
+
+       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').style('z-index',3).text('Date | ');
+       viewList.append('li').attr('id','clickInfo').attr('class','infoElements').style('z-index',3).text('Click any station to start flow from that station');
+
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').style('z-index',3).text('Use \u2758> button to fetch data for a date');
+        viewList.append('li').attr('id','resetInfo').attr('class','infoElements').style('z-index',3).text('Use X button to reset date selection');
       
+     }
 
+      var dataDate = 19291128;
 
-      var dataDate = 20140130;
-
-
-      var timeID = setInterval(function() {
+      //function that runs simulation automatically changing data in regular intervals
+      var continuousFlowFunction = function() {
         d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
@@ -173,12 +304,43 @@ svg#topSvg{
         }), function(error, data) {
           if (data.responseText == "ready") {
             getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=AGG");
-            dataDate++;
-            clearInterval(timeID);
           }
 
         });
-      }, 1000);
+      };
+
+      var timeID = setInterval(continuousFlowFunction,4000);
+
+      if(node==2){
+        d3.selectAll('.userInput').style('display','block');
+        d3.select('#clearDateTextField').on('click',()=>{
+          document.getElementById('dateSelector').value='';
+          sendEvent('clearInputField');
+        });
+
+       d3.select('#fetchDateData').on('click',()=>{
+          dataDate= document.getElementById('dateSelector').value;
+          sendEvent(JSON.stringify(
+            {
+              fetch:dataDate
+            }));
+       });
+
+      }
+
+      //selecting a date to fetch data from the server and show only this for the time being and
+      //starting the continuous flow again if the user resets selection
+      selectFlow = function(date = null,clear = false){
+        if(date){
+          clearInterval(timeID);
+          dataDate= +date;
+          continuousFlowFunction();
+        }else if(clear){
+          timeID = setInterval(continuousFlowFunction, 2000);
+        }
+
+      }
+
 
       var requestID, //variable to store request ID of animation
           frame, //frame counter total equals 60
@@ -192,6 +354,34 @@ svg#topSvg{
       function getStreamFLowData(query) {
 
         d3.json("http://10.29.3.2:8085/data.json"+query, function(error, response) {
+
+          if(node==2){
+
+          let dropDown = document.getElementById('dates'), dateAlreadyPresent=false;
+          let stringDate = String(dataDate),
+              yr = +stringDate.substring(0,4),
+              m = +stringDate.substring(4,6),
+              d = +stringDate.substring(6); 
+
+          let date = new Date(yr,m-1,d);
+          let dateDisplay = d3.select("#currentDate").text(date.toDateString());
+          
+          d3.select("#dateDetails").text('Date | '+date.toDateString());
+         
+          for(let i=0;i<dropDown.options.length;i++){
+            if(dropDown.options[i].value==dataDate){
+              dateAlreadyPresent=true;
+              break;
+            }
+          }
+
+    
+          if(!dateAlreadyPresent){
+            dropDown.appendChild(new Option(dataDate,dataDate,false,true));
+          }
+        }
+
+          dataDate++;
 
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = []; //clearing the last selected from previous date data
@@ -274,11 +464,28 @@ svg#topSvg{
                 return projection([d.lon, d.lat])[1];
               })
               .attr("width", 20)
-              .attr("height", 20);
+              .attr("height", 20)
+              .style('position','relative');
             //show station name in text in case mouse is hovered
             st_locations.on("mouseover", function(d, i) {
-              topSvg.append("text").style("z-index", 10).attr("dy", "2em").attr("transform", "translate(" + d3.mouse(this) + ")").text(d.name);
+              let xy= d3.mouse(this);
+              topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+  //to do event listener with pausing and resume
+               let currentState = d3.select(this).attr("active");
+               if(currentState==1){
+                let container = topSvg.append('g').attr('class','tempCont').attr("transform", "translate("+(xy[0]-100)+","+(xy[1]+50)+")");
+                container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','blue');
+                container.append('text').attr('class','paOrRe').attr('dx','0.5em').attr("dy", "1.5em").text("Resume");
+
+              let nextContainer = topSvg.append('g').attr('class','tempCont').attr("transform", "translate("+(xy[0]+50)+","+(xy[1]+50)+")");
+                nextContainer.append('rect').attr('class','paOrRe').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                nextContainer.append('text').attr('class','paOrRe').attr('dx','0.5em').attr("dy", "1.5em").text("Pause");
+
+
+
+               }
             }).on("mouseout", function(d, i) {
+               topSvg.selectAll(".tempCont").remove();
               topSvg.selectAll("text").remove();
             }).on("click", function() {
                   var selectedElement = d3.select(this),

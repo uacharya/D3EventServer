@@ -151,7 +151,7 @@ svg#topSvg{
         .attr("fill", "#e1bb9e")
         .attr("stroke-width", 1);
 
-    var dataDate = 20140130;
+    var dataDate = 19291128;
 
 
      var timeID = setInterval(function() {
@@ -405,10 +405,18 @@ svg#topSvg{
                     //calling a self enclosing function with the actual frame iteration number before the image is fully loaded so that all frames are created 
                     img.onload = (function(f) {
                       return function() {
+                        //rendering canvas is faster than rendering image object again and again in chrome
+                        var offScreenCanvas = document.createElement('canvas'),
+                        offScreenContext = offScreenCanvas.getContext('2d');
+                        offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
+                        offScreenCanvas.height = viewBoxHeight;
+
+                        offScreenContext.drawImage(this,0,0,viewBoxWidth,viewBoxHeight);
+
                         canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
-                        canvas.drawImage(this, 0, 0);
-                        originalImages[f] = this;
-                        currentStateImages[f] = this;
+                        canvas.drawImage(offScreenCanvas, 0, 0,viewBoxWidth, viewBoxHeight);
+                        originalImages[f] = offScreenCanvas;
+                        currentStateImages[f] = offScreenCanvas;
                         if (frame == 30) {
                             sendEvent(JSON.stringify(
                             {
@@ -422,7 +430,7 @@ svg#topSvg{
                     img.src = url[frame];
                   } else {
                     canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
-                    canvas.drawImage(currentStateImages[frame], 0, 0);
+                    canvas.drawImage(currentStateImages[frame], 0, 0,viewBoxWidth, viewBoxHeight);
 
                   }
                   frame++;

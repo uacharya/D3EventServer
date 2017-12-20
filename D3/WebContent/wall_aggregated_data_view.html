@@ -412,6 +412,7 @@ svg#topSvg{
 
           dataDate++;
 
+
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = []; //clearing the last selected from previous date data
 
@@ -430,7 +431,7 @@ svg#topSvg{
               reset:false
             }));
             
-
+            pause=false,
             frame = 0, //frame counter total equals 60
               allFrames = {}, //variable to cache original images for animation
               currentStateImages = {}; // current image to draw in the canvas based on user input

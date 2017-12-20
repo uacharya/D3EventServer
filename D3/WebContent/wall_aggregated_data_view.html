@@ -96,8 +96,8 @@ svg#topSvg{
   border:none;
   border-radius: 10px;
   font-size: 50px;
-  background-position: 10px 45px;
-  padding-left: 80px;
+  background-position: 30px 45px;
+  padding-left: 100px;
 }
 
 .glyphicon-remove:hover,.glyphicon-play-circle:hover{
@@ -124,9 +124,6 @@ svg#topSvg{
   display: none;
 }
 
-#dates{
-  font-size:100px;
-}
 /************************************/
 
 /*elements for giving context of the view and more info*/
@@ -177,11 +174,14 @@ svg#topSvg{
   </style>
 </head>
   <body>
-  <input type='text' id='dateSelector' class='userInput' list='dates' placeholder='Select a date from the list' style=" width:730px;height:140px" onkeydown="return false;" />
+<!--   <input type='text' id='dateSelector' class='userInput' list='dates' placeholder='Select a date from the list' style=" width:730px;height:140px" onkeydown="return false;" /> -->
+  <select name='dts' id='dateSelector' class='userInput' style=" width:730px;height:140px">
+    <option value="" disabled selected hidden>Select a date from the list</option>
+    </select>
   <span class="glyphicon glyphicon-play-circle userInput" id="fetchDateData"></span>
   <span class="glyphicon glyphicon-remove userInput" id="clearDateTextField"></span>
-    <datalist id="dates">
-    </datalist>
+<!--     <datalist id="dates">
+    </datalist> -->
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
     <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
     <script type="text/javascript" src="./normalize.js"></script>
@@ -327,15 +327,17 @@ svg#topSvg{
       if(node==2){
         d3.selectAll('.userInput').style('display','block');
         d3.select('#clearDateTextField').on('click',()=>{
-          document.getElementById('dateSelector').value='';
+          document.getElementById('dateSelector').selectedIndex=0;
           sendEvent('clearInputField');
         });
 
        d3.select('#fetchDateData').on('click',()=>{
-          dataDate= document.getElementById('dateSelector').value;
+          let temp = document.getElementById('dateSelector'),
+              date = temp[temp.selectedIndex].value;
+
           sendEvent(JSON.stringify(
             {
-              fetch:dataDate
+              fetch:date
             }));
        });
 
@@ -380,7 +382,7 @@ svg#topSvg{
 
           if(node==2){
 
-          let dropDown = document.getElementById('dates'), dateAlreadyPresent=false;
+          let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
           let stringDate = String(dataDate),
               yr = +stringDate.substring(0,4),
               m = +stringDate.substring(4,6),
@@ -390,9 +392,9 @@ svg#topSvg{
           let dateDisplay = d3.select("#currentDate").text(date.toDateString());
           
           d3.selectAll("#dateDetails").text('Date | '+date.toDateString());
-         
-          for(let i=0;i<dropDown.options.length;i++){
-            if(dropDown.options[i].value==dataDate){
+    
+          for(let i=0;i<dropDown.length;i++){
+            if(dropDown[i].value==dataDate){
               dateAlreadyPresent=true;
               break;
             }
@@ -400,7 +402,7 @@ svg#topSvg{
 
     
           if(!dateAlreadyPresent){
-            dropDown.appendChild(new Option(dataDate,dataDate,false,true));
+            dropDown.appendChild(new Option(dataDate,dataDate,false));
           }
 
                 d3.select('#hoverStation').remove();

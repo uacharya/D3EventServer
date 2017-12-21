@@ -82,17 +82,24 @@ svg#topSvg{
 }
 /* get user asked data and fetch it from server elements */
 
-#dateSelector{
+section#inputSection{
   position: absolute;
-  top:320px;
+  top:300px;
   left:220px;
+  margin: 0px;
+  padding: 20px 220px 20px 20px;
+  z-index: 3;
+  border:5px dotted black;
+}
+
+#dateSelector{
   color: #555;
   background-image: url(./musica-searcher.svg);
   background-repeat: no-repeat;
   background-size: 50px;
+  background-color: transparent;
   box-shadow: 1px 1px 1px rgba(0,0,0,0.63);
-  z-index: 3;
-  border:none;
+  border:5px solid black;
   border-radius: 10px;
   font-size: 50px;
   background-position: 30px 45px;
@@ -104,20 +111,19 @@ svg#topSvg{
 }
 
 .glyphicon-play-circle{
-  position: absolute;
-  top:350px;
-  left:1000px;
-  font-size:70px;
-  z-index: 3;
+  position:absolute;
+  top:50px;
+  left:770px;
+  font-size:80px;
 }
 
 .glyphicon-remove{
-  position: absolute;
-  top:350px;
-  left:1100px;
-  font-size:70px;
-  z-index: 3;
+  position:absolute;
+  top:50px;
+  left:870px;
+  font-size:80px;
 }
+
 
 .userInput{
   display: none;
@@ -171,11 +177,13 @@ svg#topSvg{
   </style>
   </head>
   <body>
-      <select name='dts' id='dateSelector' class='userInput' style=" width:730px;height:140px">
+<section id='inputSection' class='userInput'>
+  <select name='dts' id='dateSelector' class='userInput' style=" width:730px;height:140px">
     <option value="" disabled selected hidden>Select a date from the list</option>
     </select>
   <span class="glyphicon glyphicon-play-circle userInput" id="fetchDateData"></span>
   <span class="glyphicon glyphicon-remove userInput" id="clearDateTextField"></span>
+</section>
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
     <script type="text/javascript" src="http://d3js.org/topojson.v0.min.js"></script>
      <script type="text/javascript" src="./normalize.js"></script>
@@ -317,7 +325,7 @@ svg#topSvg{
       var timeID = setInterval(continuousFlowFunction,4000);
 
       if(node==2){
-        d3.selectAll('.userInput').style('display','block');
+        d3.selectAll('.userInput').style('display','inline-block');
         d3.select('#clearDateTextField').on('click',()=>{
           document.getElementById('dateSelector').selectedIndex=0;
           sendEvent('clearInputField');

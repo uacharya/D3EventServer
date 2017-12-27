@@ -107,6 +107,8 @@ section#inputSection{
   padding-left: 100px;
 }
 
+
+
 .glyphicon-remove:hover,.glyphicon-play-circle:hover{
   cursor: pointer;
 }
@@ -125,6 +127,28 @@ section#inputSection{
   font-size:80px;
 }
 
+.hintText{
+  visibility: hidden;
+  background-color: #555;
+  width: 400px;
+  color: #fff;
+  text-align: center;
+  border-radius: 10px;
+  position: absolute;
+  top:120%;
+  opacity: 1;
+  font-family: verdana;
+  font-size: 40px;
+  padding: 5px 5px;
+  transition: opacity 1s;
+}
+
+.glyphicon-remove:hover > .hintText,.glyphicon-play-circle:hover > .hintText{
+  opacity: 1;
+  visibility: visible;
+
+}
+
 
 .userInput{
   display: none;
@@ -141,10 +165,26 @@ section#inputSection{
   border-bottom: 1px solid black;
   padding:0px 0px 5px 0px;
   margin:0px;
+  display: inline-block;
 }
 
-#context:hover{
+#context:hover,#menuIcon:hover{
   cursor: pointer;
+}
+
+#menuIcon{
+  display: inline-block;
+  margin: 0px 0px 0px 40px;
+  position:absolute;
+  top:45px;
+}
+
+.menuBar{
+  width: 100px;
+  height: 18px;
+  margin: 10px 0px 0px 0px;
+  background-color: rgba(5, 10, 30, 0.6);
+  display: block;
 }
 
 #currentDate{
@@ -183,8 +223,12 @@ section#inputSection{
   <select name='dts' id='dateSelector' class='userInput' style=" width:730px;height:140px">
     <option value="" disabled selected hidden>Select a date from the list</option>
     </select>
-  <span class="glyphicon glyphicon-play-circle userInput" id="fetchDateData"></span>
-  <span class="glyphicon glyphicon-remove userInput" id="clearDateTextField"></span>
+  <div class="glyphicon glyphicon-play-circle userInput" id="fetchDateData">
+    <span class='hintText'>Click to fetch this date data</span>
+  </div>
+  <div class="glyphicon glyphicon-remove userInput" id="clearDateTextField">
+    <span class='hintText'>Click to clear date selection</span>
+  </div>
 </section>
 <!--     <datalist id="dates">
     </datalist> -->
@@ -284,7 +328,9 @@ section#inputSection{
 
       if(node==2){
 
-        let viewContext = d3.select('body').append('h1').attr('id','context').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).text('Global Wind Flow Simulation').on('click',()=>{
+        let contextDiv = d3.select('body').append('div').attr('id','contextDiv').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).style('margin','0px').style('padding','0px');
+
+        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',()=>{
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -297,6 +343,25 @@ section#inputSection{
           }
 
        });
+
+      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',()=>{
+         
+          if(document.getElementById('viewDetail').classList.contains('hidden')){
+            document.getElementById('viewDetail').style.display='block';
+            document.getElementById('viewDetail').classList.toggle('hidden');
+            document.getElementById('currentDate').style.display='none';
+          }else{
+            document.getElementById('viewDetail').style.display='none';
+            document.getElementById('viewDetail').classList.toggle('hidden');
+            document.getElementById('currentDate').style.display='block';
+          }
+
+       });
+
+      //three bars of a menu icon
+      menuIcon.append('span').attr('class','menuBar');
+      menuIcon.append('span').attr('class','menuBar');
+      menuIcon.append('span').attr('class','menuBar');
 
        viewContext.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px').style('z-index',3);
 
@@ -333,18 +398,24 @@ section#inputSection{
       if(node==2){
         d3.selectAll('.userInput').style('display','inline-block');
         d3.select('#clearDateTextField').on('click',()=>{
-          document.getElementById('dateSelector').selectedIndex=0;
-          sendEvent('clearInputField');
+          let elem = document.getElementById('dateSelector');
+          if(elem.selectedIndex){
+              document.getElementById('dateSelector').selectedIndex=0;
+              sendEvent('clearInputField');
+            }
         });
 
        d3.select('#fetchDateData').on('click',()=>{
           let temp = document.getElementById('dateSelector'),
               date = temp[temp.selectedIndex].value;
-
-          sendEvent(JSON.stringify(
+          if(date){
+            sendEvent(JSON.stringify(
             {
               fetch:date
             }));
+
+          }
+
        });
 
       }
@@ -507,10 +578,13 @@ section#inputSection{
             st_locations.on("mouseover", function(d, i) {
               let xy= d3.mouse(this),
                   elem = d3.select(this);
-              topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
   //to do event listener with pausing and resume
                let currentState = elem.attr("active");
                if(currentState==1){
+
+                if(!topSvg.selectAll("text.stationName").size()){
+                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+
                 if(pause){
                   let container = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+50)+")");
                 container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
@@ -528,14 +602,18 @@ section#inputSection{
                   }
                 }
 
+                }else{
+                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+                }
+
             }).on("mouseleave", function(d, i) {
               let currentState = d3.select(this).attr("active");
 
               if(currentState==1){
-                setTimeout(()=>{
-                  svg.selectAll("g.tempButtons").remove();
-                  topSvg.selectAll("text.stationName").remove();   
-                },2000);
+                      setTimeout(()=>{
+                        svg.selectAll("g.tempButtons").remove();
+                        topSvg.selectAll("text.stationName").remove();   
+                      },2000);
               }else{
                 topSvg.selectAll("text.stationName").remove();
               }
@@ -621,8 +699,8 @@ section#inputSection{
                           topSvg.append("text").attr("class", "velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em")
                             .text(e.attr("velocity") + "m/s");
                         }
-                      }).on("mouseout", function() {
-                        topSvg.selectAll("text").remove();
+                      }).on("mouseleave", function() {
+                        topSvg.selectAll("text.velocity").remove();
                       });
 
                   }

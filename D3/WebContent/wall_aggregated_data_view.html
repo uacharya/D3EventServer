@@ -314,7 +314,7 @@ section#inputSection{
     console.log("the required data for server is ",minimumX,maximumX);
 
     //load and display the World
-    d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.2.27:8085/world-map.json?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -377,17 +377,18 @@ section#inputSection{
         viewList.append('li').attr('id','resetInfo').attr('class','infoElements').style('z-index',3).text('Use X button to reset date selection');
      }
 
-      var dataDate = 19291128;
+      var dataDate = 19720101;
 
       //function that runs simulation automatically changing data in regular intervals
       var continuousFlowFunction = function() {
-        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "AGG"
         }), function(error, data) {
           if (data.responseText == "ready") {
             getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=AGG");
+            clearInterval(timeID);
           }
 
         });
@@ -455,7 +456,7 @@ section#inputSection{
 
       function getStreamFLowData(query) {
 
-        d3.json("http://10.29.3.2:8085/data.json"+query, function(error, response) {
+        d3.json("http://10.29.2.27:8085/data.json"+query, function(error, response) {
 
           if(node==2){
 
@@ -538,7 +539,8 @@ section#inputSection{
           for (var key in response) {
 
             var wind_flow_data = response[key], //values of the wind flow
-                station_id=key,
+                firstElement = wind_flow_data[0], //using first object reference to use for getting few info
+                station_id =  firstElement["Source"]+"_to_"+firstElement["Destination"],
                 streamLineData = {
                   id: station_id,
                   active: 0,
@@ -550,14 +552,14 @@ section#inputSection{
             var stations = [];
             //putting the source station and destination statino data to show them as circles
             stations.push({
-              name: wind_flow_data[0]["Source"],
-              lat: +wind_flow_data[0]["S_Lat"],
-              lon: +wind_flow_data[0]["S_Lon"]
+              name: firstElement["Source"],
+              lat: +firstElement["S_Lat"],
+              lon: +firstElement["S_Lon"]
             });
             stations.push({
-              name: wind_flow_data[0]["Destination"],
-              lat: +wind_flow_data[0]["D_Lat"],
-              lon: +wind_flow_data[0]["D_Lon"]
+              name: firstElement["Destination"],
+              lat: +firstElement["D_Lat"],
+              lon: +firstElement["D_Lon"]
             })
 
             //adding stations as image and adding on click event for those stations

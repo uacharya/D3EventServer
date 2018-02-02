@@ -301,7 +301,7 @@ section#inputSection{
     var path = d3.geoPath().projection(projection);
 
     //load and display the World
-    d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.2.27:8085/world-map.json?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -364,18 +364,20 @@ section#inputSection{
         viewList.append('li').attr('id','resetInfo').attr('class','infoElements').style('z-index',3).text('Use X button to reset date selection');
      }
 
-    var dataDate = 19291128;
+    var dataDate = 19720101;
 
 
       //function that runs simulation automatically changing data in regular intervals
       var continuousFlowFunction = function() {
-        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "BITMAP"
         }), function(error, data) {
+          console.log(data);
           if (data.responseText == "ready") {
             getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=BITMAP");
+            clearInterval(timeID);
           }
 
         });
@@ -495,7 +497,7 @@ section#inputSection{
         currentStateImages = {}; // current image to draw in the canvas based on user input
 
         //setting response type as blob is making the pickled binary data unparsable
-        d3.json("http://10.29.3.2:8085/data.json" + query+"-JSON").mimeType('application/json')
+        d3.json("http://10.29.2.27:8085/data.json" + query+"-JSON").mimeType('application/json')
           .get(function(error, response) {
             if (error) {
               console.log(error)
@@ -622,7 +624,7 @@ section#inputSection{
             });
 
 
-            d3.request("http://10.29.3.2:8085/data"+query+"-PNG").mimeType('image/png')
+            d3.request("http://10.29.2.27:8085/data"+query+"-PNG").mimeType('image/png')
               .responseType('arraybuffer').get(function(error, xhr) {
 
                 if (error) {

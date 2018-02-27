@@ -451,7 +451,8 @@ section#inputSection{
           currentStateImages, // current image to draw in the canvas based on user input
           windFlowIDS, //list to hold all the stream line flow ids for a particular date
           lastSelected, //holding the flows for latest interaction station
-          totalPathData; //list to hold all the stream line flow  line data for a particular date
+          totalPathData,//list to hold all the stream line flow  line data for a particular date
+          newLineOffset=0;// how much of the coordinates the lines and canvas need to me moved in new panned view
 
 
       function getStreamFLowData(query) {
@@ -674,10 +675,10 @@ section#inputSection{
                     var obj = {
                       x0: startPoint[0],
                       y0: startPoint[1],
-                      // x1: endPoint[0],
-                      // y1: endPoint[1],
+                      x1: endPoint[0],
+                      y1: endPoint[1],
                       // line:path,
-                      // v:velocity,
+                      v:velocity,
                       interpolator: pathInterpolator,
                       beforeAngle: beforeAngle,
                       afterAngle: afterAngle,
@@ -686,24 +687,6 @@ section#inputSection{
                     //,color:strokeColor};
 
                     streamLineData.value.push(obj); //adding each line data into one container for one flow
-
-                    //appends line as DOM objects so that they can be used to give velocity on hover over
-                    g.append("line").attr("x1", startPoint[0]).attr("y1", startPoint[1]).attr("x2", endPoint[0]).attr("y2", endPoint[1])
-                      .attr("class", station_id)
-                      .attr("active", 0)
-                      .attr('velocity', velocity)
-                      .style("stroke-width", 3)
-                      .style("stroke", "white")
-                      .style("opacity", 0)
-                      .on("mouseover", function(d, i) {
-                        var e = d3.select(this);
-                        if ((e.attr("active")) == 1) {
-                          topSvg.append("text").attr("class", "velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em")
-                            .text(e.attr("velocity") + "m/s");
-                        }
-                      }).on("mouseleave", function() {
-                        topSvg.selectAll("text.velocity").remove();
-                      });
 
                   }
                 }
@@ -750,10 +733,37 @@ section#inputSection{
             var index = totalSelection[j],
               streamLineID = windFlowIDS[index];
             totalPathData[index].active = newOpacity;
-            g.selectAll("line." + streamLineID).attr("active", newOpacity);
+            
+            if(newOpacity){
+
+             let allLines = totalPathData[index].value; //collection of lines for one flow
+
+                //appends line as DOM objects so that they can be used to give velocity on hover over
+                g.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                .attr("x1", function(d,i){
+                  return d.x0 + newLineOffset;
+                }).attr("y1", function(d,i){
+                  return d.y0;
+                }).attr("x2", function(d,i){
+                  return d.x1 + newLineOffset;
+                }).attr("y2", function(d,i){
+                  return d.y1;
+                }).style("stroke-width", 1)
+                  .style("stroke", "black")
+                  .style('opacity',0)
+                  .on("mouseover", function(d, i) {
+                      topSvg.append("text").attr("class", streamLineID).attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em").text((+d.v).toFixed(2) + "m/s");
+                  }).on("mouseout", function() {
+                    topSvg.selectAll("text."+streamLineID).remove();
+                  });
+
+          }else{
+            g.selectAll("line." + streamLineID).remove();
+          }  
 
           }
           g.selectAll("image#" + subString).attr("active", newOpacity);
+          console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
           if(totalSelection.length==0){
             lastSelected=[];
@@ -777,6 +787,8 @@ section#inputSection{
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
               }
+
+              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
 
               cancelAnimationFrame(requestID);
               currentStateImages=allFrames;

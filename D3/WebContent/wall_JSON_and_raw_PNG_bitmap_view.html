@@ -440,7 +440,8 @@ section#inputSection{
           windFlowIDS, //list to hold all the stream line flow ids for a particular date
           lastSelected, //holding the flows for latest interaction station
           pathData,//list to hold all the stream line flow  line data for a particular date
-          url;
+          url,
+          newLineOffset=0;// how much of the coordinates the lines and canvas need to me moved in new panned view
 
       function getStreamFLowData(query) {
 
@@ -503,7 +504,7 @@ section#inputSection{
               console.log(error)
               return;
             }
-            // console.log("the returned data is"+response);
+            console.log("the returned data is"+response);
 
             if(response==""){
               sendEvent(JSON.stringify(
@@ -528,7 +529,7 @@ section#inputSection{
                 return projection([+d[2], +d[1]])[0] - 10;
               }).attr('y', function(d, i) {
                 return projection([+d[2], +d[1]])[1];
-              }).attr("width", 20).attr("height", 20)
+              }).attr("width", 30).attr("height", 30)
               .on('mouseover', function(d, i) {
 
               let xy= d3.mouse(this),
@@ -591,29 +592,7 @@ section#inputSection{
 
                   for (var key in pathData[i]) {
                     if (key != 'h') { //only working with stream line flow lines
-
                       windFlowIDS.push(key);
-                      var d = pathData[i][key]; //collection of lines for one flow
-
-                      for (var j = 0; j < d.length; j++) {
-                        var obj = d[j];
-                        //appends line as DOM objects so that they can be used to give velocity on hover over
-                        g.append("line").attr('class', key).attr("x1", obj[0]).attr("y1", obj[1]).attr("x2", obj[2]).attr("y2", obj[3])
-                          .attr("active", 0)
-                          .attr('velocity', (+obj[4]).toFixed(2))
-                          .style("stroke-width", 1)
-                          .style("stroke", "black")
-                          .style("opacity", 0)
-                          .on("mouseover", function(d, i) {
-                            var e = d3.select(this);
-                            if ((e.attr("active")) == 1) {
-                              topSvg.append("text").attr("class", "velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em")
-                                .text(e.attr("velocity") + "m/s");
-                            }
-                          }).on("mouseout", function() {
-                            topSvg.selectAll("text.velocity").remove();
-                          });
-                      }
                     }
                   }
 
@@ -695,9 +674,38 @@ section#inputSection{
             var index = totalSelection[j],
               streamLineID = windFlowIDS[index];
             pathData[index].active = newOpacity;
-            g.selectAll("line." + streamLineID).attr("active", newOpacity);
 
+              if(newOpacity){
+
+                 let allLines = pathData[index][streamLineID]; //collection of lines for one flow
+                  //appends line as DOM objects so that they can be used to give velocity on hover over
+                  g.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                  .attr("x1", function(d,i){
+                    return d[0] + newLineOffset;
+                  }).attr("y1", function(d,i){
+                    return d[1];
+                  }).attr("x2", function(d,i){
+                    return d[2] + newLineOffset;
+                  }).attr("y2", function(d,i){
+                    return d[3];
+                  }).style("stroke-width", 1)
+                    .style("stroke", "black")
+                    .style('opacity',0)
+                    .on("mouseover", function(d, i) {
+                        topSvg.append("text").attr("class", streamLineID+" velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em").text((+d[4]).toFixed(2) + "m/s");
+                    }).on("mouseout", function() {
+                      topSvg.selectAll("text."+streamLineID).remove();
+                    });
+
+
+              }else{
+                g.selectAll("line." + streamLineID).remove();
+              }
+            
           }
+
+          console.log("the lines now are" + d3.selectAll('line').nodes().length);
+
           g.selectAll("image#" + subString).attr("active", newOpacity);
 
           if(totalSelection.length==0){
@@ -717,11 +725,14 @@ section#inputSection{
           if(verdict==1){
             setTimeout(function(){
               if(reset==true){
+                
               if(node==2){
                 console.log("got inside");
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
               }
+
+              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
 
               cancelAnimationFrame(requestID);
               currentStateImages=originalImages;
@@ -866,14 +877,13 @@ section#inputSection{
                               arrowPath.lineTo(end[0], end[1]);
                             }
 
-                            obj[4] = pathInterpolator;
-
+                            obj.push(pathInterpolator);
                             obj.push(beforeAngle);
                             obj.push(afterAngle);
                             obj.push(hypo);
 
                           } else {
-                            var nextPoint = obj[4](t),
+                            var nextPoint = obj[5](t),
                               x2 = Math.ceil(nextPoint[0]),
                               y2 = Math.ceil(nextPoint[1]);
 
@@ -883,10 +893,10 @@ section#inputSection{
                             linePath.moveTo(start[0], start[1]);
                             linePath.lineTo(end[0], end[1]);
 
-                            var leftX = Math.ceil(x2 + Math.cos(obj[5]) * obj[7]),
-                              leftY = Math.ceil(y2 + Math.sin(obj[5]) * obj[7]),
-                              rightX = Math.ceil(x2 + Math.cos(obj[6]) * obj[7]),
-                              rightY = Math.ceil(y2 + Math.sin(obj[6]) * obj[7]);
+                            var leftX = Math.ceil(x2 + Math.cos(obj[6]) * obj[8]),
+                              leftY = Math.ceil(y2 + Math.sin(obj[6]) * obj[8]),
+                              rightX = Math.ceil(x2 + Math.cos(obj[7]) * obj[8]),
+                              rightY = Math.ceil(y2 + Math.sin(obj[7]) * obj[8]);
 
                             var left = transformer.convertToActualXY(leftX, leftY),
                                 right = transformer.convertToActualXY(rightX, rightY);
@@ -952,11 +962,14 @@ section#inputSection{
   }
 
   clipDimensions = window.location.search.substring(1).split(",");
-  //checking until the url contains display dimension
-  while(clipDimensions==undefined){
-    clipDimensions = window.location.search.substring(1).split(",");
-  }
 
+  //checking until the url contains display dimension
+  while(!clipDimensions){
+    setTimeout(function(){
+      clipDimensions = window.location.search.substring(1).split(",");
+    },1000);
+    
+  }
 
   (function(){
     if(clipDimensions[0]==0 && clipDimensions[1]==0){

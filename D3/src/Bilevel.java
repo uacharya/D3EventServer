@@ -19,6 +19,7 @@ import javax.websocket.server.ServerEndpoint;
 public class Bilevel {
 	private static final double height = 6480;
 	private static final double width = 11520;
+	private static double yaw=0 , dragged=0;
 	private boolean allowClick;
 	private boolean resetCanvas;
 
@@ -77,15 +78,6 @@ public class Bilevel {
 			System.out.println(this.allowClick);
 			this.resetCanvas = message.substring(message.lastIndexOf(":") + 1, message.length() - 1).equals("false")
 					? false : true;
-	
-//			synchronized (allInstances) {
-//				for (Bilevel e : allInstances) {
-//					if (e.resetCanvasOrNot() == false) {
-//						return;
-//					}
-//				}
-//				sendMessageToAll("reset");// sending events to all
-//			}
 		} else if (message.contains("click")) {
 			this.allowClick = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
 					? false : true;
@@ -101,6 +93,9 @@ public class Bilevel {
 				}
 				sendMessageToAll("reset");// sending events to all
 			}
+		}else if(message.contains("drag")){
+			//caling functin that handles the panning event
+			handlePanning(Double.parseDouble(message.substring(message.indexOf(":")+1,message.length()-1)));
 		} else {
 			synchronized (allInstances) {
 				for (Bilevel e : allInstances) {
@@ -134,6 +129,31 @@ public class Bilevel {
 															// message was sent
 				}
 			}
+		}
+	}
+	
+	
+	/** This function is responsible for providing panning parameters to all of the monitors in connection
+	 * @param transformX how much of total x has bee transformed
+	 */
+	private void handlePanning(double transformX){
+		//checking if new transformation is done only in x axis
+		if(transformX != dragged){
+			double xMoved  = transformX - dragged;
+			System.out.println("xMoved is : "+xMoved);
+			double degreesMoved = 360  * (xMoved / width);
+			double newYaw = yaw+ degreesMoved;
+			//checking if the panning is inside bounds
+			if(newYaw>= -40 && newYaw<=40){
+				yaw = newYaw;
+				dragged = transformX;
+				System.out.println(" the yaw and dragged are " + yaw +" "+dragged);				
+				sendMessageToAll("{\"yaw\":"+newYaw+",\"drag\":"+transformX+"}");
+			}else{
+				//if not inside bound resetting the front end event handler object to old values
+				sendMessageToAll("{\"drag\":"+dragged+"}");
+			}
+			
 		}
 	}
 
@@ -238,6 +258,11 @@ public class Bilevel {
 		System.out.println("client is now closed with ID " + session.getId());
 		allSessions.remove(session);
 		allInstances.remove(this);
+		
+		if(allSessions.size()==0){
+			yaw = 0;
+			dragged = 0;
+		}
 	}
 
 	/**

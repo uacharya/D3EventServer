@@ -252,6 +252,7 @@ section#inputSection{
       height = 6480,
       viewBoxHeight=2160,
       viewBoxWidth= 3840,
+      overScannedCanvasWidth = 6400,
       maxlat = 85,
       initialScale = 1833.31;
       
@@ -259,7 +260,7 @@ section#inputSection{
       .center([0,0])
       .translate([5759.513227752704,4250])
       .scale(initialScale)
-      .rotate([0, 0]);
+      .rotate([0,0, 0]);
 
     //display parameters for the particular monitor
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
@@ -284,8 +285,8 @@ section#inputSection{
       .attr("viewBox",parameters)
       .attr("preserveAspectRatio","xMinYMin meet");
 
-    var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", viewBoxWidth)
-      .attr("height", viewBoxHeight).style('left',0).style('top',0).node().getContext('2d');
+    var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", overScannedCanvasWidth)
+      .attr("height", viewBoxHeight).style('left','-1279.891px').style('top','0px').node().getContext('2d');
 
     var transformer = new transform(clipDimensions[0],clipDimensions[1]);
 
@@ -301,7 +302,7 @@ section#inputSection{
     var path = d3.geoPath().projection(projection);
 
     //load and display the World
-    d3.json("http://10.29.2.27:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -369,21 +370,21 @@ section#inputSection{
 
       //function that runs simulation automatically changing data in regular intervals
       var continuousFlowFunction = function() {
-        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
+        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "BITMAP"
         }), function(error, data) {
           console.log(data);
-          if (data.responseText == "ready") {
+          // if (data.responseText == "ready") {
             getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=BITMAP");
             clearInterval(timeID);
-          }
+          // }
 
         });
       };
 
-      // var timeID = setInterval(continuousFlowFunction,4000);
+      var timeID = setInterval(continuousFlowFunction,4000);
 
       if(node==2){
         d3.selectAll('.userInput').style('display','inline-block');
@@ -423,7 +424,7 @@ section#inputSection{
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
           let checkerCanvas =  document.createElement('canvas');
-              checkerCanvas.width = viewBoxWidth,
+              checkerCanvas.width = overScannedCanvasWidth,
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
             requestID = requestAnimationFrame(draw); //resuming the animation
@@ -468,16 +469,19 @@ section#inputSection{
                 newLineOffset+=xMoved; //calculating total shifting of the coordinates done since the beggining
                 //redrawing new map based on new panning interaction
                 g.selectAll("path").attr("d",path.projection(projection));
+
+
                 
-                document.getElementById("canvasDemo").style.left = newLineOffset+"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
+                document.getElementById("canvasDemo").style.left = (-1279.891 + newLineOffset) +"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
              
                 //redrawing stations based on new panning 
-                g.selectAll("image").attr("x", function(d, i) {
-                      return projection([d.lon, d.lat])[0] - 10;
-                    })
-                    .attr("y", function(d, i) {
-                      return projection([d.lon, d.lat])[1];
-                    });
+                g.selectAll("image").attr('x', function(d, i) {
+                  let x  = projection([+d[2], +d[1]])[0];
+                  return isFinite(x) ? x- 10: null;
+                }).attr('y', function(d, i) {
+                  let y = projection([+d[2], +d[1]])[1];
+                  return isFinite(y) ? y : null;
+                });
 
                 //redrawing new lines based on new panning
                 g.selectAll('line').attr("x1", function(d,i){
@@ -496,6 +500,8 @@ section#inputSection{
         }
 
     }
+
+
 
 
 
@@ -554,7 +560,7 @@ section#inputSection{
         currentStateImages = {}; // current image to draw in the canvas based on user input
 
         //setting response type as blob is making the pickled binary data unparsable
-        d3.json("http://10.29.2.27:8085/data.json" + query+"-JSON").mimeType('application/json')
+        d3.json("http://10.29.3.2:8085/data.json" + query+"-JSON").mimeType('application/json')
           .get(function(error, response) {
             if (error) {
               console.log(error)
@@ -662,7 +668,7 @@ section#inputSection{
             });
 
 
-            d3.request("http://10.29.2.27:8085/data"+query+"-PNG").mimeType('image/png')
+            d3.request("http://10.29.3.2:8085/data"+query+"-PNG").mimeType('image/png')
               .responseType('arraybuffer').get(function(error, xhr) {
 
                 if (error) {
@@ -805,7 +811,7 @@ section#inputSection{
 
               }else{
               cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
-              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
+              canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
               }
               
             },500);
@@ -831,13 +837,13 @@ section#inputSection{
                         //rendering canvas is faster than rendering image object again and again in chrome
                         let offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
-                        offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
+                        offScreenCanvas.width = overScannedCanvasWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
                         offScreenCanvas.height = viewBoxHeight;
 
-                        offScreenContext.drawImage(this,0,0,viewBoxWidth,viewBoxHeight);
+                        offScreenContext.drawImage(this,0,0,overScannedCanvasWidth,viewBoxHeight);
 
-                        canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
-                        canvas.drawImage(this, 0, 0,viewBoxWidth, viewBoxHeight);
+                        canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
+                        canvas.drawImage(this, 0, 0,overScannedCanvasWidth, viewBoxHeight);
                         originalImages[f] = offScreenCanvas;
                         currentStateImages[f] = offScreenCanvas;
                         if (frame == 30) {
@@ -852,8 +858,8 @@ section#inputSection{
 
                     img.src = url[frame];
                   } else {
-                    canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
-                    canvas.drawImage(currentStateImages[frame], 0, 0,viewBoxWidth, viewBoxHeight);
+                    canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
+                    canvas.drawImage(currentStateImages[frame], 0, 0,overScannedCanvasWidth, viewBoxHeight);
 
                   }
                   frame++;
@@ -874,7 +880,7 @@ section#inputSection{
                   while (f < 30) {
                     var offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
-                        offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
+                        offScreenCanvas.width = overScannedCanvasWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
                         offScreenCanvas.height = viewBoxHeight;
 
                     var linePath = new Path2D(), //this one for drawing lines
@@ -913,8 +919,8 @@ section#inputSection{
                             var start = transformer.convertToActualXY(+obj[0], +obj[1]),
                                 end = transformer.convertToActualXY(x2, y2);
 
-                            linePath.moveTo(start[0], start[1]);
-                            linePath.lineTo(end[0], end[1]);
+                            linePath.moveTo(start[0]+1280, start[1]);
+                            linePath.lineTo(end[0]+1280, end[1]);
 
                             var leftX = Math.ceil(x2 + Math.cos(beforeAngle) * hypo),
                               leftY = Math.ceil(y2 + Math.sin(beforeAngle) * hypo),
@@ -925,15 +931,15 @@ section#inputSection{
                                 right = transformer.convertToActualXY(rightX, rightY);
 
                             if (isLast) {
-                              latestArrowPath.moveTo(end[0], end[1]);
-                              latestArrowPath.lineTo(left[0], left[1]);
-                              latestArrowPath.lineTo(right[0], right[1]);
-                              latestArrowPath.lineTo(end[0], end[1]);
+                              latestArrowPath.moveTo(end[0]+1280, end[1]);
+                              latestArrowPath.lineTo(left[0]+1280, left[1]);
+                              latestArrowPath.lineTo(right[0]+1280, right[1]);
+                              latestArrowPath.lineTo(end[0]+1280, end[1]);
                             } else {
-                              arrowPath.moveTo(end[0], end[1]);
-                              arrowPath.lineTo(left[0], left[1]);
-                              arrowPath.lineTo(right[0], right[1]);
-                              arrowPath.lineTo(end[0], end[1]);
+                              arrowPath.moveTo(end[0]+1280, end[1]);
+                              arrowPath.lineTo(left[0]+1280, left[1]);
+                              arrowPath.lineTo(right[0]+1280, right[1]);
+                              arrowPath.lineTo(end[0]+1280, end[1]);
                             }
 
                             obj.push(pathInterpolator);
@@ -949,8 +955,8 @@ section#inputSection{
                             var start = transformer.convertToActualXY(+obj[0], +obj[1]),
                                 end = transformer.convertToActualXY(x2, y2);
 
-                            linePath.moveTo(start[0], start[1]);
-                            linePath.lineTo(end[0], end[1]);
+                            linePath.moveTo(start[0]+1280, start[1]);
+                            linePath.lineTo(end[0]+1280, end[1]);
 
                             var leftX = Math.ceil(x2 + Math.cos(obj[6]) * obj[8]),
                               leftY = Math.ceil(y2 + Math.sin(obj[6]) * obj[8]),
@@ -961,15 +967,15 @@ section#inputSection{
                                 right = transformer.convertToActualXY(rightX, rightY);
 
                             if (isLast) {
-                              latestArrowPath.moveTo(end[0], end[1]);
-                              latestArrowPath.lineTo(left[0], left[1]);
-                              latestArrowPath.lineTo(right[0], right[1]);
-                              latestArrowPath.lineTo(end[0], end[1]);
+                              latestArrowPath.moveTo(end[0]+1280, end[1]);
+                              latestArrowPath.lineTo(left[0]+1280, left[1]);
+                              latestArrowPath.lineTo(right[0]+1280, right[1]);
+                              latestArrowPath.lineTo(end[0]+1280, end[1]);
                             } else {
-                              arrowPath.moveTo(end[0], end[1]);
-                              arrowPath.lineTo(left[0], left[1]);
-                              arrowPath.lineTo(right[0], right[1]);
-                              arrowPath.lineTo(end[0], end[1]);
+                              arrowPath.moveTo(end[0]+1280, end[1]);
+                              arrowPath.lineTo(left[0]+1280, left[1]);
+                              arrowPath.lineTo(right[0]+1280, right[1]);
+                              arrowPath.lineTo(end[0]+1280, end[1]);
                             }
 
                           }

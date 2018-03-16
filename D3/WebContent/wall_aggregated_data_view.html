@@ -256,7 +256,7 @@ section#inputSection{
       .center([0,0])
       .translate([5759.513227752704,4250])
       .scale(initialScale)
-      .rotate([0, 0]);
+      .rotate([0,0, 0]);
 
     //display parameters for the particular monitor
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
@@ -443,6 +443,10 @@ section#inputSection{
         }
 
       }
+
+      
+      console.log(" the data for old left corner is ",projection([0,78.75475308895119]));
+      console.log(" the data for old left corner is ",projection([40,78.75475308895119]));
 
 
       var requestID, //variable to store request ID of animation

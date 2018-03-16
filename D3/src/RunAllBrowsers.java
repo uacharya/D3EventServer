@@ -131,6 +131,7 @@ public class RunAllBrowsers {
 		for (int i = 0; i < nodesCommand.length; i++) {
 			for (int j = 0; j < numberOfBrowsers; j++) { // the index of monitor
 				// creates command to run in command line using psExec
+//				if(j==2){
 				String[] commandLineArgs = giveFullCommandLineArgs(i, nodesCommand[j].split("\\s+"));
 				ExecuteCommand execute = new ExecuteCommand(commandLineArgs, String.format("%s%s", j, i));
 				Thread node = new Thread(execute, execute.getThreadName());
@@ -141,6 +142,7 @@ public class RunAllBrowsers {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+//				}
 			}
 
 		}

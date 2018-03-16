@@ -60,18 +60,7 @@ text.paOrRe{
   font: 25px Verdana;
 }
 
-@keyframes blink{
-  from {
-    opacity: 1;
-  }
-  to{
-    opacity: 0;
-  }
-}
 
-/*image {
-  animation:blink 1s infinite;
-}*/
 
 .tempButtons, image ,line{
   cursor: pointer;
@@ -82,11 +71,37 @@ body { margin: 0px;
   overflow: hidden;
 }
 
+/* setting css transformation to produce stations blinking effect */
+/*@keyframes inout{
+ from {opacity: 1;}
+ to   {opacity: 0.1;}
+
+}
+
+image.blinkers{
+  animation:inout 1.5s ease-in-out 0s infinite alternate;
+}*/
+
+
+@keyframes blink{
+  0%{z-index: 2;}
+  50%{z-index: 1.5;}
+  100%{z-index: 1;}
+}
+
+.blinkers{
+   animation:blink 1s ease-in-out 0s infinite alternate;
+}
+
+/**************************************************************/
+
 svg#mapSVG{
   position: absolute;
   top: 0px;
   left: 0px;
   z-index: 0;
+  background-color: #1ca2ba;
+
 }
 
 canvas#canvasDemo {
@@ -95,13 +110,14 @@ canvas#canvasDemo {
   z-index: 1;
 }
 
+
 svg#topSvg{
   position: absolute;
   top: 0px;
   left: 0px;
-  pointer-events:none;
   z-index: 2;
 }
+
 /* get user asked data and fetch it from server elements */
 
 section#inputSection{
@@ -280,14 +296,12 @@ section#inputSection{
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
     var svg = d3.select("body").append("svg")
+      .attr('id','mapSVG')
       .attr("width", width)
       .attr("height", height)
       .attr("clip-path","url(#clipping)")
       .attr("viewBox",parameters)
-      .attr("preserveAspectRatio","xMinYMin meet")
-      .style("z-index", 0)
-      .style("background-color", "#1ca2ba");
-    
+      .attr("preserveAspectRatio","xMinYMin meet");   
 
     svg.append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",viewBoxWidth).attr("height",viewBoxHeight);
 
@@ -295,9 +309,12 @@ section#inputSection{
     var topSvg = d3.select("body").append("svg").attr("id", "topSvg")
       .attr("width", width)
       .attr("height", height)
+      .attr('class','initialFlow blinkers')
       .attr("clip-path","url(#clipping)")
       .attr("viewBox",parameters)
-      .attr("preserveAspectRatio","xMinYMin meet");
+      .attr("preserveAspectRatio","xMinYMin meet")
+      .style("animation-play-state","running");
+ 
 
     var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", overScannedCanvasWidth)
       .attr("height", viewBoxHeight).style('left','-1280px').style('top','0px').node().getContext('2d');
@@ -332,7 +349,7 @@ section#inputSection{
 
         let contextDiv = d3.select('body').append('div').attr('id','contextDiv').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).style('margin','0px').style('padding','0px');
 
-        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',()=>{
+        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -346,7 +363,7 @@ section#inputSection{
 
        });
 
-      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',()=>{
+      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -399,7 +416,7 @@ section#inputSection{
 
       if(node==2){
         d3.selectAll('.userInput').style('display','inline-block');
-        d3.select('#clearDateTextField').on('click',()=>{
+        d3.select('#clearDateTextField').on('click',function(){
           let elem = document.getElementById('dateSelector');
           if(elem.selectedIndex){
               document.getElementById('dateSelector').selectedIndex=0;
@@ -407,7 +424,7 @@ section#inputSection{
             }
         });
 
-       d3.select('#fetchDateData').on('click',()=>{
+       d3.select('#fetchDateData').on('click',function(){
           let temp = document.getElementById('dateSelector'),
               date = temp[temp.selectedIndex].value;
           if(date){
@@ -456,11 +473,11 @@ section#inputSection{
           newLineOffset=0;// how much of the coordinates the lines and canvas need to me moved in new panned view
 
     //taking care of zoom behaviour
-    var zoom = d3.zoom().scaleExtent([1,1]).on('end',()=>{
+    var zoom = d3.zoom().scaleExtent([1,1]).on('end',function(){
       panner();
     });
     
-    svg.call(zoom);
+    topSvg.call(zoom);
     //event listener functino that takes care of panning correctly based on user interaction
     panner  = function(serverInput = null){
         console.log(serverInput);
@@ -481,12 +498,10 @@ section#inputSection{
                 //redrawing new map based on new panning interaction
                 g.selectAll("path").attr("d",path.projection(projection));
 
-
-                
                 document.getElementById("canvasDemo").style.left = (-1280+ newLineOffset) +"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
              
                 //redrawing stations based on new panning 
-                g.selectAll("image").attr('x', function(d, i) {
+                topSvg.selectAll("image").attr('x', function(d, i) {
                   let x  = projection([+d[2], +d[1]])[0];
                   return isFinite(x) ? x- 50: null;
                 }).attr('y', function(d, i) {
@@ -495,17 +510,17 @@ section#inputSection{
                 });
 
                 //redrawing new lines based on new panning
-                g.selectAll('line').attr("x1", function(d,i){
+                topSvg.selectAll('line').attr("x1", function(d,i){
                   return d[0] + newLineOffset;
                 }).attr("x2", function(d,i){
                   return d[2] + newLineOffset;
                 });
 
-                svg.node().__zoom.x = serverInput['drag'];
+                topSvg.node().__zoom.x = serverInput['drag'];
                 console.log(svg.node().__zoom);
               }else{
-                svg.node().__zoom.x = serverInput['drag'];
-                console.log(svg.node().__zoom);
+                topSvg.node().__zoom.x = serverInput['drag'];
+                console.log(topSvg.node().__zoom);
               }
 
         }
@@ -590,10 +605,11 @@ section#inputSection{
             console.log(stationData);
 
             //adding stations as image and adding on click event for those stations
-            var st_locations = g.selectAll('image').data(stationData).enter().append('image').attr('id', function(d, i) {
+            var st_locations = topSvg.selectAll('image').data(stationData).enter().append('image').attr('id', function(d, i) {
                 return d[0];
               })
               .attr('active', 0)
+              // .attr('class','blinkers')
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr('x', function(d, i) {
                 let x  = projection([+d[2], +d[1]])[0];
@@ -601,11 +617,22 @@ section#inputSection{
               }).attr('y', function(d, i) {
                 let y = projection([+d[2], +d[1]])[1];
                 return isFinite(y) ? y -50: null;
-              }).attr("width", 80).attr("height", 80)
+              })
+              // .style("animation-play-state","running")
+              .attr("width", 80).attr("height", 80)
               .on('mouseover', function(d, i) {
 
               let xy= d3.mouse(this),
                   elem = d3.select(this);
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(!elem.node().parentNode.classList.toggle('blinkers')){
+                      //pausing blinking when mouse over a station
+                          elem.node().parentNode.style.animationPlayState = 'paused';
+                      }
+                  }
+
+
               //to do event listener with pausing and resume
                let currentState = elem.attr("active");
                if(currentState==1){
@@ -615,25 +642,25 @@ section#inputSection{
                   let numOfCharacters = d[0].length,
                       textContainer = topSvg.append('g').attr('class','stationName').attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
                       
-                      textContainer.append('rect').attr('class','stationName').attr('width',()=>{
+                      textContainer.append('rect').attr('class','stationName').attr('width',function(){
                           return (numOfCharacters*21) +"px";
                       }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
                       container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                      container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',()=>{
+                      container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
                             //asking to resume animation 
                             sendEvent('resume');
                           });
                 }else{
-                  let nextContainer = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
                       nextContainer.append('rect').attr('class','paOrRe').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                      nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',()=>{
+                      nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
                           //asking to pause the whole current animation
                           sendEvent('pause');
                       });
@@ -645,18 +672,28 @@ section#inputSection{
                   let numOfCharacters = d[0].length,
                       textContainer = topSvg.append('g').attr('class','stationName').attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
                       
-                      textContainer.append('rect').attr('class','stationName').attr('width',()=>{
+                      textContainer.append('rect').attr('class','stationName').attr('width',function(){
                           return (numOfCharacters*21) +"px";
                       }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
                 }
               }).on("mouseout", function(d, i) {
-              let currentState = d3.select(this).attr("active");
+              let elem = d3.select(this),
+                  currentState = elem.attr("active");
 
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(elem.node().parentNode.classList.toggle('blinkers')){
+                        //resuming blinking effect after mouse out
+                        elem.node().parentNode.style.animationPlayState = 'running';
+                      }   
+                  }
+
+                     
                 if(currentState==1){
-                  setTimeout(()=>{
-                    svg.selectAll("g.tempButtons").remove();
+                  setTimeout(function(){
+                    topSvg.selectAll("g.tempButtons").remove();
                     topSvg.selectAll(".stationName").remove();   
                   },2500);
                 }else{
@@ -664,8 +701,10 @@ section#inputSection{
                 }
 
               }).on("click", function() {
-                  svg.selectAll("g.tempButtons").remove();
+                  topSvg.selectAll("g.tempButtons").remove();
                   topSvg.selectAll(".stationName").remove(); 
+                  //making sure mouseout after click doesnot append blinkers class name again
+                  d3.select(this.parentNode).node().classList.remove('initialFlow');
 
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
@@ -751,7 +790,10 @@ section#inputSection{
           if (windFlowIDS.length == 0) {
             return;
           }
-         
+
+          //removing both the class name after interaction mode is entered
+          topSvg.node().classList.remove('blinkers','initialFlow');
+
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {
             var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
@@ -769,7 +811,7 @@ section#inputSection{
 
                  let allLines = pathData[index][streamLineID]; //collection of lines for one flow
                   //appends line as DOM objects so that they can be used to give velocity on hover over
-                  g.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                  topSvg.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
                   .attr("x1", function(d,i){
                     return d[0] + newLineOffset;
                   }).attr("y1", function(d,i){
@@ -788,7 +830,7 @@ section#inputSection{
                             numOfCharacters = info.length,
                             lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
 
-                            lineContainer.append('rect').attr('width',()=>{
+                            lineContainer.append('rect').attr('width',function(){
                                 return (numOfCharacters*21) +"px";
                             }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
@@ -800,14 +842,14 @@ section#inputSection{
 
 
               }else{
-                g.selectAll("line." + streamLineID).remove();
+                topSvg.selectAll("line." + streamLineID).remove();
               }
             
           }
 
           console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
-          g.selectAll("image#" + subString).attr("active", newOpacity);
+          topSvg.selectAll("image#" + subString).attr("active", newOpacity);
 
           if(totalSelection.length==0){
             lastSelected=[];
@@ -828,12 +870,12 @@ section#inputSection{
               if(reset==true){
                 
               if(node==2){
-                console.log("got inside");
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
               }
 
-              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              // d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
 
               cancelAnimationFrame(requestID);
               currentStateImages=originalImages;
@@ -862,7 +904,7 @@ section#inputSection{
             function draw() {
                   if (frame > 29) {
                     frame = 0;
-                  }
+                  }                  
 
                   if (originalImages[frame] == undefined) {
 
@@ -1096,7 +1138,7 @@ section#inputSection{
   //checking until the url contains display dimension
   if(clipDimensions.length==1){
 
-    setTimeout(()=>{
+    setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
     },10)

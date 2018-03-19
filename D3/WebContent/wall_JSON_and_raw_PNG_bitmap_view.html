@@ -72,6 +72,7 @@ body { margin: 0px;
 }
 
 /* setting css transformation to produce stations blinking effect */
+
 /*@keyframes inout{
  from {opacity: 1;}
  to   {opacity: 0.1;}
@@ -333,7 +334,7 @@ section#inputSection{
     var path = d3.geoPath().projection(projection);
 
     //load and display the World
-    d3.json("http://10.29.2.27:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.2.27:8085/world-map?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -582,7 +583,7 @@ section#inputSection{
         currentStateImages = {}; // current image to draw in the canvas based on user input
 
         //setting response type as blob is making the pickled binary data unparsable
-        d3.json("http://10.29.2.27:8085/data.json" + query+"-JSON").mimeType('application/json')
+        d3.json("http://10.29.2.27:8085/data" + query+"-JSON").mimeType('application/json')
           .get(function(error, response) {
             if (error) {
               console.log(error)
@@ -637,29 +638,29 @@ section#inputSection{
                let currentState = elem.attr("active");
                if(currentState==1){
 
-                if(!topSvg.selectAll(".stationName").size()){
+                if(!topSvg.selectAll("g."+d[0]).size()){
                     //creating white background when displaying text for station info
                   let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName').attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
                       
-                      textContainer.append('rect').attr('class','stationName').attr('width',function(){
-                          return (numOfCharacters*21) +"px";
+                      textContainer.append('rect').attr('width',function(){
+                          return (numOfCharacters*22) +"px";
                       }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = topSvg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
-                      container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
                       container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
                             //asking to resume animation 
                             sendEvent('resume');
                           });
                 }else{
-                  let nextContainer = topSvg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
-                      nextContainer.append('rect').attr('class','paOrRe').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
                       nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
                           //asking to pause the whole current animation
                           sendEvent('pause');
@@ -668,15 +669,18 @@ section#inputSection{
                 }
 
                 }else{
-                  //creating white background when displaying text for station info
-                  let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName').attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
-                      
-                      textContainer.append('rect').attr('class','stationName').attr('width',function(){
-                          return (numOfCharacters*21) +"px";
-                      }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
-                      textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
+                  if(!topSvg.selectAll("g."+d[0]).size()){
+                      //creating white background when displaying text for station info
+                      let numOfCharacters = d[0].length,
+                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                          
+                          textContainer.append('rect').attr('width',function(){
+                              return (numOfCharacters*22) +"px";
+                          }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                          textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
+                  }
                 }
               }).on("mouseout", function(d, i) {
               let elem = d3.select(this),
@@ -684,27 +688,26 @@ section#inputSection{
 
                   if(elem.node().parentNode.classList.contains('initialFlow')){
                       //checking if the flow is in initial state or interaction state
-                      if(elem.node().parentNode.classList.toggle('blinkers')){
+                      if(!elem.node().parentNode.classList.contains('blinkers')){
                         //resuming blinking effect after mouse out
+                        elem.node().parentNode.classList.add('blinkers');
                         elem.node().parentNode.style.animationPlayState = 'running';
                       }   
                   }
 
                      
                 if(currentState==1){
+
                   setTimeout(function(){
-                    topSvg.selectAll("g.tempButtons").remove();
-                    topSvg.selectAll(".stationName").remove();   
+                    topSvg.selectAll("g."+d[0]).remove();   
                   },2500);
                 }else{
-                  topSvg.selectAll(".stationName").remove();
+                  topSvg.selectAll("g."+d[0]).remove();
                 }
 
               }).on("click", function() {
                   topSvg.selectAll("g.tempButtons").remove();
-                  topSvg.selectAll(".stationName").remove(); 
-                  //making sure mouseout after click doesnot append blinkers class name again
-                  d3.select(this.parentNode).node().classList.remove('initialFlow');
+                  topSvg.selectAll("g.stationName").remove(); 
 
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
@@ -793,6 +796,7 @@ section#inputSection{
 
           //removing both the class name after interaction mode is entered
           topSvg.node().classList.remove('blinkers','initialFlow');
+          topSvg.node().style.animationPlayState = 'paused';
 
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {
@@ -870,12 +874,14 @@ section#inputSection{
               if(reset==true){
                 
               if(node==2){
+      
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
               }
 
               // d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
               topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
+              topSvg.node().style.animationPlayState = 'running';
 
               cancelAnimationFrame(requestID);
               currentStateImages=originalImages;
@@ -1141,7 +1147,7 @@ section#inputSection{
     setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },10)
+    },20)
   
   }else{
         intializeGraphics();

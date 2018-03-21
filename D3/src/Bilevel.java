@@ -19,7 +19,7 @@ import javax.websocket.server.ServerEndpoint;
 public class Bilevel {
 	private static final double height = 6480;
 	private static final double width = 11520;
-	private static double yaw=0 , dragged=0;
+	private static double yaw = 0, dragged = 0;
 	private boolean allowClick;
 	private boolean resetCanvas;
 
@@ -73,18 +73,25 @@ public class Bilevel {
 		if (message.contains("X=")) {
 			sendDisplayDimension(session, IPAddress, message);
 		} else if (message.contains("click") && message.contains("reset")) {
-			this.allowClick = message.substring(message.indexOf(":") + 1, message.indexOf("reset")).equals("false")
+			this.allowClick = message.substring(message.indexOf(":") + 1, message.indexOf(",")).equals("false")
 					? false : true;
 			System.out.println(this.allowClick);
 			this.resetCanvas = message.substring(message.lastIndexOf(":") + 1, message.length() - 1).equals("false")
 					? false : true;
 		} else if (message.contains("click")) {
-			this.allowClick = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
-					? false : true;
+			this.allowClick = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false") ? false
+					: true;
 			System.out.println(this.allowClick);
+		} else if (message.contains("drag")) {
+			// caling functin that handles the panning event
+			handlePanning(Double.parseDouble(message.substring(message.indexOf(":") + 1, message.length() - 1)));
+		} else if (message.contains("fetch")) {
+			// sending fetch instruction after node 2 makes sure that the data
+			// for that date is available
+			sendMessageToAll(message);// sending events to all
 		} else if (message.contains("reset")) {
-			this.resetCanvas = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false")
-					? false : true;
+			this.resetCanvas = message.substring(message.indexOf(":") + 1, message.length() - 1).equals("false") ? false
+					: true;
 			synchronized (allInstances) {
 				for (Bilevel e : allInstances) {
 					if (e.resetCanvasOrNot() == false) {
@@ -93,9 +100,6 @@ public class Bilevel {
 				}
 				sendMessageToAll("reset");// sending events to all
 			}
-		}else if(message.contains("drag")){
-			//caling functin that handles the panning event
-			handlePanning(Double.parseDouble(message.substring(message.indexOf(":")+1,message.length()-1)));
 		} else {
 			synchronized (allInstances) {
 				for (Bilevel e : allInstances) {
@@ -117,7 +121,7 @@ public class Bilevel {
 	 *            event data to send
 	 */
 	private void sendMessageToAll(String message) {
-		System.out.println("the data to send is"+message);
+		System.out.println("the data to send is" + message);
 		// iterate over all active sessions and send the same event
 		synchronized (allSessions) {
 			for (Session ssn : allSessions) {
@@ -131,29 +135,33 @@ public class Bilevel {
 			}
 		}
 	}
-	
-	
-	/** This function is responsible for providing panning parameters to all of the monitors in connection
-	 * @param transformX how much of total x has bee transformed
+
+	/**
+	 * This function is responsible for providing panning parameters to all of
+	 * the monitors in connection
+	 * 
+	 * @param transformX
+	 *            how much of total x has bee transformed
 	 */
-	private void handlePanning(double transformX){
-		//checking if new transformation is done only in x axis
-		if(transformX != dragged){
-			double xMoved  = transformX - dragged;
-			System.out.println("xMoved is : "+xMoved);
-			double degreesMoved = 360  * (xMoved / width);
-			double newYaw = yaw+ degreesMoved;
-			//checking if the panning is inside bounds
-			if(newYaw>= -40 && newYaw<=40){
+	private void handlePanning(double transformX) {
+		// checking if new transformation is done only in x axis
+		if (transformX != dragged) {
+			double xMoved = transformX - dragged;
+			System.out.println("xMoved is : " + xMoved);
+			double degreesMoved = 360 * (xMoved / width);
+			double newYaw = yaw + degreesMoved;
+			// checking if the panning is inside bounds
+			if (newYaw >= -40 && newYaw <= 40) {
 				yaw = newYaw;
 				dragged = transformX;
-				System.out.println(" the yaw and dragged are " + yaw +" "+dragged);				
-				sendMessageToAll("{\"yaw\":"+newYaw+",\"drag\":"+transformX+"}");
-			}else{
-				//if not inside bound resetting the front end event handler object to old values
-				sendMessageToAll("{\"drag\":"+dragged+"}");
+				System.out.println(" the yaw and dragged are " + yaw + " " + dragged);
+				sendMessageToAll("{\"yaw\":" + newYaw + ",\"drag\":" + transformX + "}");
+			} else {
+				// if not inside bound resetting the front end event handler
+				// object to old values
+				sendMessageToAll("{\"drag\":" + dragged + "}");
 			}
-			
+
 		}
 	}
 
@@ -230,17 +238,17 @@ public class Bilevel {
 	 * This function just returns a property associated with each websocket
 	 * object created
 	 * 
-	 * @return boolean stating should click interaction be allowed in all nodes or not
+	 * @return boolean stating should click interaction be allowed in all nodes
+	 *         or not
 	 */
 	public boolean getAllowInteraction() {
 		return this.allowClick;
 	}
 
-	
-	
 	/**
 	 * This function just returns a property associated with each websocket
 	 * object created
+	 * 
 	 * @return boolean stating whether reset canvas or not in all nodes
 	 */
 	public boolean resetCanvasOrNot() {
@@ -258,8 +266,8 @@ public class Bilevel {
 		System.out.println("client is now closed with ID " + session.getId());
 		allSessions.remove(session);
 		allInstances.remove(this);
-		
-		if(allSessions.size()==0){
+
+		if (allSessions.size() == 0) {
 			yaw = 0;
 			dragged = 0;
 		}

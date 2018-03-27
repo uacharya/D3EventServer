@@ -7,7 +7,7 @@
   <meta name="Description" content="Animating Wind Flow">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <script type="text/javascript">
-    var recieveEventData,panner;
+     var recieveEventData,panner;
 
     var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
@@ -23,9 +23,11 @@
           if(reset==false){
               reset=true;
           }
-        }else if(dimension.data=='clearInputField'){
-            selectFlow(null,true);
-        }else if(dimension.data.includes('fetch')){
+        }
+        // else if(dimension.data=='clearInputField'){
+        //     selectFlow(null,true);
+        // }
+        else if(dimension.data.includes('fetch')){
           let temp = JSON.parse(dimension.data)
           selectFlow(temp['fetch']);
         }else if(dimension.data=='pause'){
@@ -51,21 +53,59 @@
     </script>
   <style>
   text.stationName ,text.velocity{
-  text-anchor: middle;
+  text-anchor: start;
   font: 30px Verdana;
+/*  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;*/
 }
 
 text.paOrRe{
   font: 25px Verdana;
 }
 
+
+
 .tempButtons, image ,line{
   cursor: pointer;
 }
-body { margin: 0; 
-      padding: 0px;
+
+body { margin: 0px; 
+    padding: 0px;
   overflow: hidden;
-  }
+}
+
+/* setting css transformation to produce stations blinking effect */
+
+/*@keyframes inout{
+ from {opacity: 1;}
+ to   {opacity: 0.1;}
+
+}
+
+image.blinkers{
+  animation:inout 1.5s ease-in-out 0s infinite alternate;
+}*/
+
+
+@keyframes blink{
+  0%{z-index: 2;}
+  50%{z-index: 1.5;}
+  100%{z-index: 1;}
+}
+
+.blinkers{
+   animation:blink 1s ease-in-out 0s infinite alternate;
+}
+
+/**************************************************************/
+
+svg#mapSVG{
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index: 0;
+  background-color: #1ca2ba;
+
+}
 
 canvas#canvasDemo {
   position: absolute;
@@ -73,11 +113,11 @@ canvas#canvasDemo {
   z-index: 1;
 }
 
+
 svg#topSvg{
   position: absolute;
   top: 0px;
   left: 0px;
-  pointer-events:none;
   z-index: 2;
 }
 
@@ -106,8 +146,6 @@ section#inputSection{
   background-position: 30px 45px;
   padding-left: 100px;
 }
-
-
 
 .glyphicon-remove:hover,.glyphicon-play-circle:hover{
   cursor: pointer;
@@ -204,7 +242,8 @@ section#inputSection{
   text-shadow: none;
   color:#eeeeee;
   font-weight: normal;
-  font-size: 0.8em;
+  font-size: 112px;
+  line-height: initial;
   font-family: mplus-2p-light-sub,Helvetica,arial,freesans,clean,sans-serif;
   display: none;
 }
@@ -237,7 +276,7 @@ section#inputSection{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -277,12 +316,14 @@ section#inputSection{
     var topSvg = d3.select("body").append("svg").attr("id", "topSvg")
       .attr("width", width)
       .attr("height", height)
+      .attr('class','initialFlow blinkers')
       .attr("clip-path","url(#clipping)")
       .attr("viewBox",parameters)
-      .attr("preserveAspectRatio","xMinYMin meet");
+      .attr("preserveAspectRatio","xMinYMin meet")
+      .style("animation-play-state","running");
 
     var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", viewBoxWidth)
-      .attr("height", viewBoxHeight).style('left',0).style('top',0).node().getContext('2d');
+      .attr("height", viewBoxHeight).style('left','0px').style('top','0px').node().getContext('2d');
 
     var transformer = new transform(clipDimensions[0],clipDimensions[1]);
 
@@ -314,7 +355,7 @@ section#inputSection{
     console.log("the required data for server is ",minimumX,maximumX);
 
     //load and display the World
-    d3.json("http://10.29.2.27:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.2.27:8085/world-map?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
@@ -330,7 +371,7 @@ section#inputSection{
 
         let contextDiv = d3.select('body').append('div').attr('id','contextDiv').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).style('margin','0px').style('padding','0px');
 
-        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',()=>{
+        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -344,7 +385,7 @@ section#inputSection{
 
        });
 
-      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',()=>{
+      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -363,90 +404,134 @@ section#inputSection{
       menuIcon.append('span').attr('class','menuBar');
       menuIcon.append('span').attr('class','menuBar');
 
-       viewContext.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px').style('z-index',3);
+       contextDiv.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px');
 
-       let viewDetail = viewContext.append('div').attr('id','viewDetail').attr('class','infoContainer hidden').style('position','absolute').style('left','0px').style('top','140px').style('z-index',3);
+       let viewDetail = contextDiv.append('div').attr('id','viewDetail').attr('class','infoContainer hidden').style('position','absolute').style('left','0px').style('top','140px');
 
-       let viewList= viewDetail.append('ul').attr('id','viewInfo').style('z-index',3);
-
-       let dt = viewList.append('li').attr('id','dateDetails').attr('class','infoElements').style('z-index',3).text('Date | ');
-
-       viewList.append('li').attr('id','clickInfo').attr('class','infoElements').style('z-index',3).text('Click any station to start flow from that station');
-
-       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').style('z-index',3).text('Use \u2758> button to fetch data for a date');
-        viewList.append('li').attr('id','resetInfo').attr('class','infoElements').style('z-index',3).text('Use X button to reset date selection');
+       let viewList= viewDetail.append('ul').attr('id','viewInfo');
+       //adding all the info about interaction as list elements where one info per line
+       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | ');
+       viewList.append('li').attr('id','clickInfo').attr('class','infoElements').text('Click any station to start flow from that station');
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date');
+       // viewList.append('li').attr('id','resetInfo').attr('class','infoElements').text('Use X button to reset date selection');
      }
 
-      var dataDate = 19720101;
+     //making node 2 responsible for checking if new data is available and then fetch it is user wants to
+     if(node==2){
 
       //function that runs simulation automatically changing data in regular intervals
-      var continuousFlowFunction = function() {
-        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
+      var continuousDataCheckFunction = function() {
+        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "AGG"
         }), function(error, data) {
-          if (data.responseText == "ready") {
-            getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=AGG");
-            clearInterval(timeID);
+          let response = JSON.parse(data.responseText);
+          if (response[0] == "ready") {
+
+              let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
+              //adding next available data for visualization to date selector select button
+              for(let i=0;i<dropDown.length;i++){
+                if(dropDown[i].value==dataDate){
+                  dateAlreadyPresent=true;
+                  break;
+                }
+              }
+        
+              if(!dateAlreadyPresent){
+                dropDown.appendChild(new Option(dataDate,dataDate,false));
+              }
+
+              //starting first date flow without user input
+              if(dataDate==19720101){
+                  sendEvent(JSON.stringify(
+                            {fetch:dataDate})
+                           );
+              }
+
+              if(response[1]!="done"){
+                dataDate = response[1];
+              }else{
+                clearInterval(timeID);
+              }
+              
           }
-
         });
-      };
+      }
 
-      // var timeID = setInterval(continuousFlowFunction,4000);
-
-      if(node==2){
-        d3.selectAll('.userInput').style('display','inline-block');
-        d3.select('#clearDateTextField').on('click',()=>{
-          let elem = document.getElementById('dateSelector');
-          if(elem.selectedIndex){
-              document.getElementById('dateSelector').selectedIndex=0;
-              sendEvent('clearInputField');
-            }
-        });
-
-       d3.select('#fetchDateData').on('click',()=>{
-          let temp = document.getElementById('dateSelector'),
-              date = temp[temp.selectedIndex].value;
-          if(date){
-            sendEvent(JSON.stringify(
-            {
-              fetch:date
-            }));
-
+      var timeID = setInterval(continuousDataCheckFunction,4000);
+  
+  
+      
+      //adding user input field to document flow for getting user selected date for a flow
+      d3.selectAll('.userInput').style('display','inline-block');
+      
+      d3.select('#clearDateTextField').on('click',function(){
+        let elem = document.getElementById('dateSelector');
+        if(elem.selectedIndex){
+            document.getElementById('dateSelector').selectedIndex=0;
+            // sendEvent('clearInputField');
           }
+      });
 
-       });
+     d3.select('#fetchDateData').on('click',function(){
+        let temp = document.getElementById('dateSelector'),
+            date = temp[temp.selectedIndex].value;
+        if(date){
+          sendEvent(JSON.stringify(
+          {
+            fetch:date
+          }));
+        }
 
+     });
+
+    }
+
+      //function to call fetch data for a date in a particular format
+      function getDataForThisDate(date){
+     
+        if(node==2){
+          let stringDate = String(date),
+              yr = +stringDate.substring(0,4),
+              m = +stringDate.substring(4,6),
+              d = +stringDate.substring(6); 
+
+          let formattedDate = new Date(yr,m-1,d);
+
+          let dateDisplay = d3.select("#currentDate").text(formattedDate.toDateString());
+          
+          d3.select("#dateDetails").text('Date | '+formattedDate.toDateString());
+        }
+
+        //getting data for a date by passing in actual query string for get request to server
+        getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=BITMAP");
       }
 
       //selecting a date to fetch data from the server and show only this for the time being and
       //starting the continuous flow again if the user resets selection
       selectFlow = function(date = null,clear = false,pause=false,resume=false){
+       
         if(date){
-          clearInterval(timeID);
-          dataDate= +date;
-          continuousFlowFunction();
-        }else if(clear){
-          timeID = setInterval(continuousFlowFunction, 2000);
-        }else if(pause){
+          getDataForThisDate(date);
+        }
+        // else if(clear){
+        //   timeID = setInterval(continuousFlowFunction, 2000);
+        // }
+        else if(pause){
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
           let checkerCanvas =  document.createElement('canvas');
-              checkerCanvas.width = viewBoxWidth,
+              checkerCanvas.width = overScannedCanvasWidth,
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
-            requestID = requestAnimationFrame(animate); //resuming the animation
+            requestID = requestAnimationFrame(draw); //resuming the animation
           }
           
         }
 
       }
 
-      
-      console.log(" the data for old left corner is ",projection([0,78.75475308895119]));
-      console.log(" the data for old left corner is ",projection([40,78.75475308895119]));
 
 
       var requestID, //variable to store request ID of animation
@@ -459,11 +544,11 @@ section#inputSection{
           newLineOffset=0;// how much of the coordinates the lines and canvas need to me moved in new panned view
 
     //taking care of zoom behaviour
-    var zoom = d3.zoom().scaleExtent([1,1]).on('end',()=>{
+    var zoom = d3.zoom().scaleExtent([1,1]).on('end',function(){
       panner();
     });
     
-    svg.call(zoom);
+    topSvg.call(zoom);
     //event listener functino that takes care of panning correctly based on user interaction
     panner  = function(serverInput = null){
         console.log(serverInput);
@@ -487,25 +572,27 @@ section#inputSection{
                 document.getElementById("canvasDemo").style.left = newLineOffset+"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
              
                 //redrawing stations based on new panning 
-                g.selectAll("image").attr("x", function(d, i) {
-                      return projection([d.lon, d.lat])[0] - 10;
+                topSvg.selectAll("image").attr("x", function(d, i) {
+                      let x = projection([d.lon, d.lat])[0];
+                      return isFinite(x) ? x- 50: null;
                     })
                     .attr("y", function(d, i) {
-                      return projection([d.lon, d.lat])[1];
+                      let y = projection([d.lon, d.lat])[1];
+                      return isFinite(y) ? y -50 : null;
                     });
 
                 //redrawing new lines based on new panning
-                g.selectAll('line').attr("x1", function(d,i){
+                topSvg.selectAll('line').attr("x1", function(d,i){
                   return d.x0 + newLineOffset;
                 }).attr("x2", function(d,i){
                   return d.x1 + newLineOffset;
                 });
 
-                svg.node().__zoom.x = serverInput['drag'];
-                console.log(svg.node().__zoom);
+                topSvg.node().__zoom.x = serverInput['drag'];
+                console.log(topSvg.node().__zoom);
               }else{
-                svg.node().__zoom.x = serverInput['drag'];
-                console.log(svg.node().__zoom);
+                topSvg.node().__zoom.x = serverInput['drag'];
+                console.log(topSvg.node().__zoom);
               }
 
         }
@@ -517,39 +604,12 @@ section#inputSection{
 
         d3.json("http://10.29.2.27:8085/data.json"+query, function(error, response) {
 
+          // dataDate++;
           if(node==2){
-
-          let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
-          let stringDate = String(dataDate),
-              yr = +stringDate.substring(0,4),
-              m = +stringDate.substring(4,6),
-              d = +stringDate.substring(6); 
-
-          let date = new Date(yr,m-1,d);
-          let dateDisplay = d3.select("#currentDate").text(date.toDateString());
-          
-          d3.selectAll("#dateDetails").text('Date | '+date.toDateString());
-    
-          for(let i=0;i<dropDown.length;i++){
-            if(dropDown[i].value==dataDate){
-              dateAlreadyPresent=true;
-              break;
-            }
-          }
-
-    
-          if(!dateAlreadyPresent){
-            dropDown.appendChild(new Option(dataDate,dataDate,false));
-          }
-
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
-        }
-
-
-          
-
-          dataDate++;
+                d3.select('#hoverLine').remove();
+          }
 
 
             cancelAnimationFrame(requestID); //stopping the old animation
@@ -559,6 +619,8 @@ section#inputSection{
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
             d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new data comes in
 
+            topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
+            topSvg.node().style.animationPlayState = 'running'; //reruning the blinking effect for topSvg container
 
             totalPathData = [];
             windFlowIDS = [];
@@ -623,7 +685,7 @@ section#inputSection{
 
 
             //adding stations as image and adding on click event for those stations
-            var st_locations = g.selectAll("image." + station_id).data(stations).enter().append("image").attr("class", station_id)
+            var st_locations = topSvg.selectAll("image." + station_id).data(stations).enter().append("image").attr("class", station_id)
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
@@ -634,7 +696,7 @@ section#inputSection{
               })
               .attr("y", function(d, i) {
                 let y = projection([d.lon, d.lat])[1];
-                return isFinite(y) ? y:null; 
+                return isFinite(y) ? y- 10 :null; 
               })
               .attr("width", 20)
               .attr("height", 20);
@@ -642,49 +704,89 @@ section#inputSection{
             st_locations.on("mouseover", function(d, i) {
               let xy= d3.mouse(this),
                   elem = d3.select(this);
-  //to do event listener with pausing and resume
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(!elem.node().parentNode.classList.toggle('blinkers')){
+                      //pausing blinking when mouse over a station
+                          elem.node().parentNode.style.animationPlayState = 'paused';
+                      }
+                  }
+
+
+              //to do event listener with pausing and resume
                let currentState = elem.attr("active");
                if(currentState==1){
 
-                if(!topSvg.selectAll("text.stationName").size()){
-                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+                if(!topSvg.selectAll("g."+d[0]).size()){
+                    //creating white background when displaying text for station info
+                  let numOfCharacters = d[0].length,
+                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      
+                      textContainer.append('rect').attr('width',function(){
+                          return (numOfCharacters*22) +"px";
+                      }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                      textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+50)+")");
-                container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',()=>{
-                      //asking to resume animation 
-                      sendEvent('resume');
-                    });
+                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+
+                      container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
+                            //asking to resume animation 
+                            sendEvent('resume');
+                          });
                 }else{
-                  let nextContainer = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+50)+")");
-                nextContainer.append('rect').attr('class','paOrRe').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',()=>{
-                    //asking to pause the whole current animation
-                    sendEvent('pause');
-                });
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+
+                      nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
+                          //asking to pause the whole current animation
+                          sendEvent('pause');
+                      });
                   }
                 }
 
                 }else{
-                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+
+                  if(!topSvg.selectAll("g."+d[0]).size()){
+                      //creating white background when displaying text for station info
+                      let numOfCharacters = d[0].length,
+                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                          
+                          textContainer.append('rect').attr('width',function(){
+                              return (numOfCharacters*22) +"px";
+                          }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                          textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
+                  }
+                }
+              }).on("mouseout", function(d, i) {
+              let elem = d3.select(this),
+                  currentState = elem.attr("active");
+
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(!elem.node().parentNode.classList.contains('blinkers')){
+                        //resuming blinking effect after mouse out
+                        elem.node().parentNode.classList.add('blinkers');
+                        elem.node().parentNode.style.animationPlayState = 'running';
+                      }   
+                  }
+
+                     
+                if(currentState==1){
+
+                  setTimeout(function(){
+                    topSvg.selectAll("g."+d[0]).remove();   
+                  },2500);
+                }else{
+                  topSvg.selectAll("g."+d[0]).remove();
                 }
 
-            }).on("mouseleave", function(d, i) {
-              let currentState = d3.select(this).attr("active");
-
-              if(currentState==1){
-                      setTimeout(()=>{
-                        svg.selectAll("g.tempButtons").remove();
-                        topSvg.selectAll("text.stationName").remove();   
-                      },2000);
-              }else{
-                topSvg.selectAll("text.stationName").remove();
-              }
-
-            }).on("click", function() {
-                  svg.selectAll("g.tempButtons").remove();
-                  topSvg.selectAll("text.stationName").remove();  
+              }).on("click", function() {
+                  topSvg.selectAll("g.tempButtons").remove();
+                  topSvg.selectAll("g.stationName").remove(); 
 
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
@@ -771,10 +873,12 @@ section#inputSection{
 
 
           if(node==2){
-            if(document.getElementsByClassName('infoElements').length==4){
+
+            if(document.getElementsByClassName('infoElements').length==3){
                 let elem = d3.select('#viewInfo');
-                elem.append('li').attr('id','hoverStation').attr('class','infoElements').style('z-index',3).text('Hover over the stations to pause or resume the flow');
-                elem.append('li').attr('id','resetStation').attr('class','infoElements').style('z-index',3).text('Click the active station to remove flow from that station');
+                elem.append('li').attr('id','hoverStation').attr('class','infoElements').text('Hover over the stations to pause or resume the flow');
+                elem.append('li').attr('id','resetStation').attr('class','infoElements').text('Click the active station to remove flow from that station');
+                elem.append('li').attr('id','hoverLine').attr('class','infoElements').text('Hover over any visible line to get velocity info for that wind instance');
               }
           }
 
@@ -782,6 +886,10 @@ section#inputSection{
             return;
           }
          
+          //removing both the class name after interaction mode is entered
+          topSvg.node().classList.remove('blinkers','initialFlow');
+          topSvg.node().style.animationPlayState = 'paused';
+
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {
             var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
@@ -800,7 +908,7 @@ section#inputSection{
              let allLines = totalPathData[index].value; //collection of lines for one flow
 
                 //appends line as DOM objects so that they can be used to give velocity on hover over
-                g.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                topSvg.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
                 .attr("x1", function(d,i){
                   return d.x0 + newLineOffset;
                 }).attr("y1", function(d,i){
@@ -813,17 +921,28 @@ section#inputSection{
                   .style("stroke", "black")
                   .style('opacity',0)
                   .on("mouseover", function(d, i) {
-                      topSvg.append("text").attr("class", streamLineID+" velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em").text((+d.v).toFixed(2) + "m/s");
-                  }).on("mouseout", function() {
-                    topSvg.selectAll("text."+streamLineID).remove();
-                  });
+                        let xy = d3.mouse(this),
+                            info = (+d.v).toFixed(2)+"m/s",
+                            numOfCharacters = info.length,
+                            lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
+
+                            lineContainer.append('rect').attr('width',function(){
+                                return (numOfCharacters*21) +"px";
+                            }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                            lineContainer.append('text').attr("class","velocity").attr('dx','0.5em').attr('dy','1.2em').text(info);
+
+                    }).on("mouseout", function() {
+                      topSvg.selectAll("g."+streamLineID).remove();
+                    });
 
           }else{
-            g.selectAll("line." + streamLineID).remove();
+            topSvg.selectAll("line." + streamLineID).remove();
           }  
 
           }
-          g.selectAll("image#" + subString).attr("active", newOpacity);
+          topSvg.selectAll("image#" + subString).attr("active", newOpacity);
+
           console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
           if(totalSelection.length==0){
@@ -844,12 +963,15 @@ section#inputSection{
             setTimeout(function(){
               if(reset==true){
               if(node==2){
-                console.log("got inside");
+      
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
+                d3.select('#hoverLine').remove();
               }
 
-              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              // d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
+              topSvg.node().style.animationPlayState = 'running';
 
               cancelAnimationFrame(requestID);
               currentStateImages=allFrames;
@@ -1238,10 +1360,10 @@ section#inputSection{
   //checking until the url contains display dimension
   if(clipDimensions.length==1){
 
-    setTimeout(()=>{
+    setTimeout(function()
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },10)
+    },20)
   
   }else{
         intializeGraphics();

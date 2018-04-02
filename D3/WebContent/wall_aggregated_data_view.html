@@ -359,7 +359,7 @@ section#inputSection{
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
-          .geometries)
+          .geometries,function(d){return d;})
         .enter()
         .append("path")
         .attr("d", path)
@@ -672,20 +672,26 @@ section#inputSection{
 
             var stations = [];
             //putting the source station and destination statino data to show them as circles
-            stations.push({
-              name: firstElement["Source"],
-              lat: +firstElement["S_Lat"],
-              lon: +firstElement["S_Lon"]
-            });
-            stations.push({
-              name: firstElement["Destination"],
-              lat: +firstElement["D_Lat"],
-              lon: +firstElement["D_Lon"]
-            })
+            if(d3.select("#"+firstElement['Source']).node()==undefined){
+              stations.push({
+                name: firstElement["Source"],
+                lat: +firstElement["S_Lat"],
+                lon: +firstElement["S_Lon"]
+              });
+            }
+
+
+            if(d3.select("#"+firstElement['Destination']).node()==undefined){
+              stations.push({
+                name: firstElement["Destination"],
+                lat: +firstElement["D_Lat"],
+                lon: +firstElement["D_Lon"]
+              });
+            }
 
 
             //adding stations as image and adding on click event for those stations
-            var st_locations = topSvg.selectAll("image." + station_id).data(stations).enter().append("image").attr("class", station_id)
+            var st_locations = topSvg.selectAll("image." + station_id).data(stations,function(d){return d;}).enter().append("image").attr("class", station_id)
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
@@ -717,19 +723,19 @@ section#inputSection{
                let currentState = elem.attr("active");
                if(currentState==1){
 
-                if(!topSvg.selectAll("g."+d[0]).size()){
+                if(!topSvg.selectAll("g."+d.name).size()){
                     //creating white background when displaying text for station info
-                  let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                  let numOfCharacters = d.name.length,
+                      textContainer = topSvg.append('g').attr('class','stationName '+d.name).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
                       
                       textContainer.append('rect').attr('width',function(){
                           return (numOfCharacters*22) +"px";
                       }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
-                      textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
+                      textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d.name);
 
                 if(pause){
-                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons '+d.name).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
                       container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
                       container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
@@ -737,7 +743,7 @@ section#inputSection{
                             sendEvent('resume');
                           });
                 }else{
-                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d.name).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
 
                       nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
                       nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
@@ -749,16 +755,16 @@ section#inputSection{
 
                 }else{
 
-                  if(!topSvg.selectAll("g."+d[0]).size()){
+                  if(!topSvg.selectAll("g."+d.name).size()){
                       //creating white background when displaying text for station info
-                      let numOfCharacters = d[0].length,
-                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      let numOfCharacters = d.name.length,
+                          textContainer = topSvg.append('g').attr('class','stationName '+d.name).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
                           
                           textContainer.append('rect').attr('width',function(){
                               return (numOfCharacters*22) +"px";
                           }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
 
-                          textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
+                          textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d.name);
                   }
                 }
               }).on("mouseout", function(d, i) {
@@ -778,10 +784,10 @@ section#inputSection{
                 if(currentState==1){
 
                   setTimeout(function(){
-                    topSvg.selectAll("g."+d[0]).remove();   
+                    topSvg.selectAll("g."+d.name).remove();   
                   },2500);
                 }else{
-                  topSvg.selectAll("g."+d[0]).remove();
+                  topSvg.selectAll("g."+d.name).remove();
                 }
 
               }).on("click", function() {
@@ -908,7 +914,7 @@ section#inputSection{
              let allLines = totalPathData[index].value; //collection of lines for one flow
 
                 //appends line as DOM objects so that they can be used to give velocity on hover over
-                topSvg.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                topSvg.selectAll("line."+streamLineID).data(allLines,function(d){return d;}).enter().append('line').attr('class',streamLineID)
                 .attr("x1", function(d,i){
                   return d.x0 + newLineOffset;
                 }).attr("y1", function(d,i){

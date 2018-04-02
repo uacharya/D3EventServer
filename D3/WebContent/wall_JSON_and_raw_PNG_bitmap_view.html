@@ -300,12 +300,13 @@ section#inputSection{
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
     var svg = d3.select("body").append("svg")
-      .attr('id','mapSVG')
-      .attr("width", width)
-      .attr("height", height)
-      .attr("clip-path","url(#clipping)")
-      .attr("viewBox",parameters)
-      .attr("preserveAspectRatio","xMinYMin meet");   
+        .attr("width", width)
+        .attr("height", height)
+        .attr("clip-path","url(#clipping)")
+        .attr("viewBox",parameters)
+        .attr("preserveAspectRatio","xMinYMin meet")
+        .style("z-index", 0)
+        .style("background-color", "#1ca2ba");
 
     svg.append("clipPath").attr("id","clipping").append("rect").attr("x",0).attr("y",0).attr("width",viewBoxWidth).attr("height",viewBoxHeight);
 
@@ -341,7 +342,7 @@ section#inputSection{
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
-          .geometries)
+          .geometries,function(d){return d;})
         .enter()
         .append("path")
         .attr("d", path)
@@ -403,12 +404,13 @@ section#inputSection{
 
       //function that runs simulation automatically changing data in regular intervals
       var continuousDataCheckFunction = function() {
-        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "BITMAP"
         }), function(error, data) {
           let response = JSON.parse(data.responseText);
+          console.log(response);
           if (response[0] == "ready") {
 
               let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
@@ -638,7 +640,7 @@ section#inputSection{
             var stationData = response['stations'];
            
             //adding stations as image and adding on click event for those stations
-            var st_locations = topSvg.selectAll('image').data(stationData).enter().append('image').attr('id', function(d, i) {
+            var st_locations = topSvg.selectAll('image').data(stationData,function(d){return d;}).enter().append('image').attr('id', function(d, i) {
                 return d[0];
               })
               .attr('active', 0)
@@ -849,7 +851,7 @@ section#inputSection{
 
                  let allLines = pathData[index][streamLineID]; //collection of lines for one flow
                   //appends line as DOM objects so that they can be used to give velocity on hover over
-                  topSvg.selectAll("line."+streamLineID).data(allLines).enter().append('line').attr('class',streamLineID)
+                  topSvg.selectAll("line."+streamLineID).data(allLines,function(d){return d;}).enter().append('line').attr('class',streamLineID)
                   .attr("x1", function(d,i){
                     return d[0] + newLineOffset;
                   }).attr("y1", function(d,i){

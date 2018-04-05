@@ -6,7 +6,7 @@
   <meta name="Description" content="Animating Wind Flow">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   <script type="text/javascript">
-    var recieveEventData;
+    var recieveEventData,panner;
 
     var webSocket = new WebSocket("ws://10.29.3.2:8080/D3/bilevelserver");
 
@@ -22,9 +22,11 @@
           if(reset==false){
               reset=true;
           }
-        }else if(dimension.data=='clearInputField'){
-            selectFlow(null,true);
-        }else if(dimension.data.includes('fetch')){
+        }
+        // else if(dimension.data=='clearInputField'){
+        //     selectFlow(null,true);
+        // }
+        else if(dimension.data.includes('fetch')){
           let temp = JSON.parse(dimension.data)
           selectFlow(temp['fetch']);
         }else if(dimension.data=='pause'){
@@ -33,6 +35,8 @@
         }else if(dimension.data=='resume'){
             pause=false;
             selectFlow(null,false,false,true);
+        }else if(dimension.data.includes('yaw')||dimension.data.includes('drag')){
+          panner(JSON.parse(dimension.data));
         }else {
             recieveEventData(JSON.parse(dimension.data));
         }
@@ -48,13 +52,16 @@
 </script>
   <style>
   text.stationName ,text.velocity{
-  text-anchor: middle;
+  text-anchor: start;
   font: 30px Verdana;
+/*  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;*/
 }
 
 text.paOrRe{
   font: 25px Verdana;
 }
+
+
 
 .tempButtons, image ,line{
   cursor: pointer;
@@ -63,23 +70,56 @@ text.paOrRe{
 body { margin: 0px; 
     padding: 0px;
   overflow: hidden;
-  }
+}
+
+/* setting css transformation to produce stations blinking effect */
+
+/*@keyframes inout{
+ from {opacity: 1;}
+ to   {opacity: 0.1;}
+
+}
+
+image.blinkers{
+  animation:inout 1.5s ease-in-out 0s infinite alternate;
+}*/
+
+
+@keyframes blink{
+  0%{z-index: 2;}
+  50%{z-index: 1.5;}
+  100%{z-index: 1;}
+}
+
+.blinkers{
+   animation:blink 1s ease-in-out 0s infinite alternate;
+}
+
+/**************************************************************/
+
+svg#mapSVG{
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  z-index: 0;
+  background-color: #1ca2ba;
+
+}
 
 canvas#canvasDemo {
   position: absolute;
   pointer-events:none;
-  top: 0px;
-  left: 0px;
   z-index: 1;
 }
+
 
 svg#topSvg{
   position: absolute;
   top: 0px;
   left: 0px;
-  pointer-events:none;
   z-index: 2;
 }
+
 /* get user asked data and fetch it from server elements */
 
 section#inputSection{
@@ -201,7 +241,8 @@ section#inputSection{
   text-shadow: none;
   color:#eeeeee;
   font-weight: normal;
-  font-size: 0.8em;
+  font-size: 112px;
+  line-height: initial;
   font-family: mplus-2p-light-sub,Helvetica,arial,freesans,clean,sans-serif;
   display: none;
 }
@@ -215,7 +256,6 @@ section#inputSection{
   </style>
   </head>
   <body>
-<section id='inputSection' class='userInput'>
 <section id='inputSection' class='userInput'>
   <select name='dts' id='dateSelector' class='userInput' style=" width:730px;height:140px">
     <option value="" disabled selected hidden>Select a date from the list</option>
@@ -232,7 +272,7 @@ section#inputSection{
      <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -272,12 +312,14 @@ section#inputSection{
     var topSvg = d3.select("body").append("svg").attr("id", "topSvg")
       .attr("width", width)
       .attr("height", height)
+      .attr('class','initialFlow blinkers')
       .attr("clip-path","url(#clipping)")
       .attr("viewBox",parameters)
-      .attr("preserveAspectRatio","xMinYMin meet");
+      .attr("preserveAspectRatio","xMinYMin meet")
+      .style("animation-play-state","running");
 
     var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", viewBoxWidth)
-      .attr("height", viewBoxHeight).node().getContext('2d');
+      .attr("height", viewBoxHeight).style('left','0px').style('top','0px').node().getContext('2d');
 
     var transformer = new transform(clipDimensions[0],clipDimensions[1]);
     //creating a marker as arrowhead
@@ -305,23 +347,23 @@ section#inputSection{
       maximumX = dimension[1][0];
 
     //load and display the World
-    d3.json("http://10.29.3.2:8085/world-map.json?op=OPEN", function(error, topology) {
+    d3.json("http://10.29.2.27:8085/world-map?op=OPEN", function(error, topology) {
 
       g.selectAll("path")
         .data(topojson.object(topology, topology.objects.countries)
-          .geometries)
+          .geometries,function(d){return d;})
         .enter()
         .append("path")
         .attr("d", path)
         .attr("stroke", "white")
         .attr("fill", "#e1bb9e")
-        .attr("stroke-width", 3);
+        .attr("stroke-width", 1);
 
       if(node==2){
 
         let contextDiv = d3.select('body').append('div').attr('id','contextDiv').style('position','absolute').style('left','1300px').style('top','300px').style('z-index',3).style('margin','0px').style('padding','0px');
 
-        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',()=>{
+        let viewContext = contextDiv.append('h1').attr('id','context').text('Global Wind Flow Simulation').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -335,7 +377,7 @@ section#inputSection{
 
        });
 
-      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',()=>{
+      let menuIcon = contextDiv.append('div').attr('id','menuIcon').on('click',function(){
          
           if(document.getElementById('viewDetail').classList.contains('hidden')){
             document.getElementById('viewDetail').style.display='block';
@@ -354,82 +396,129 @@ section#inputSection{
       menuIcon.append('span').attr('class','menuBar');
       menuIcon.append('span').attr('class','menuBar');
 
-       viewContext.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px').style('z-index',3);
+       contextDiv.append('h2').attr('id','currentDate').style('position','absolute').style('left','420px').style('top','150px');
 
-       let viewDetail = viewContext.append('div').attr('id','viewDetail').attr('class','infoContainer hidden').style('position','absolute').style('left','0px').style('top','140px').style('z-index',3);
+       let viewDetail = contextDiv.append('div').attr('id','viewDetail').attr('class','infoContainer hidden').style('position','absolute').style('left','0px').style('top','140px');
 
-       let viewList= viewDetail.append('ul').attr('id','viewInfo').style('z-index',3);
-
-       let dt = viewList.append('li').attr('id','dateDetails').attr('class','infoElements').style('z-index',3).text('Date | ');
-
-       viewList.append('li').attr('id','clickInfo').attr('class','infoElements').style('z-index',3).text('Click any station to start flow from that station');
-
-       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').style('z-index',3).text('Use \u2758> button to fetch data for a date');
-        viewList.append('li').attr('id','resetInfo').attr('class','infoElements').style('z-index',3).text('Use X button to reset date selection');
+       let viewList= viewDetail.append('ul').attr('id','viewInfo');
+       //adding all the info about interaction as list elements where one info per line
+       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | ');
+       viewList.append('li').attr('id','clickInfo').attr('class','infoElements').text('Click any station to start flow from that station');
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date');
+       // viewList.append('li').attr('id','resetInfo').attr('class','infoElements').text('Use X button to reset date selection');
      }
 
 
-    var dataDate = 19291128;
-
+     //making node 2 responsible for checking if new data is available and then fetch it is user wants to
+     if(node==2){
 
       //function that runs simulation automatically changing data in regular intervals
-      var continuousFlowFunction = function() {
-        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+      var continuousDataCheckFunction = function() {
+        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "RAW"
         }), function(error, data) {
-          if (data.responseText == "ready") {
-            getStreamFLowData("?op=OPEN&node="+node+"&date="+dataDate+"&type=RAW");
+          let response = JSON.parse(data.responseText);
+          if (response[0] == "ready") {
+
+              let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
+              //adding next available data for visualization to date selector select button
+              for(let i=0;i<dropDown.length;i++){
+                if(dropDown[i].value==dataDate){
+                  dateAlreadyPresent=true;
+                  break;
+                }
+              }
+        
+              if(!dateAlreadyPresent){
+                dropDown.appendChild(new Option(dataDate,dataDate,false));
+              }
+
+              //starting first date flow without user input
+              if(dataDate==19720101){
+                  sendEvent(JSON.stringify(
+                            {fetch:dataDate})
+                           );
+              }
+
+              if(response[1]!="done"){
+                dataDate = response[1];
+              }else{
+                clearInterval(timeID);
+              }
+              
           }
-
         });
-      };
+      }
 
-      var timeID = setInterval(continuousFlowFunction,4000);
-
-      if(node==2){
-        d3.selectAll('.userInput').style('display','inline-block');
-        d3.select('#clearDateTextField').on('click',()=>{
-          let elem = document.getElementById('dateSelector');
-          if(elem.selectedIndex){
-              document.getElementById('dateSelector').selectedIndex=0;
-              sendEvent('clearInputField');
-            }
-        });
-
-       d3.select('#fetchDateData').on('click',()=>{
-          let temp = document.getElementById('dateSelector'),
-              date = temp[temp.selectedIndex].value;
-          if(date){
-            sendEvent(JSON.stringify(
-            {
-              fetch:date
-            }));
-
+      var timeID = setInterval(continuousDataCheckFunction,4000);
+  
+  
+      
+      //adding user input field to document flow for getting user selected date for a flow
+      d3.selectAll('.userInput').style('display','inline-block');
+      
+      d3.select('#clearDateTextField').on('click',function(){
+        let elem = document.getElementById('dateSelector');
+        if(elem.selectedIndex){
+            document.getElementById('dateSelector').selectedIndex=0;
+            // sendEvent('clearInputField');
           }
+      });
 
-       });
+     d3.select('#fetchDateData').on('click',function(){
+        let temp = document.getElementById('dateSelector'),
+            date = temp[temp.selectedIndex].value;
+        if(date){
+          sendEvent(JSON.stringify(
+          {
+            fetch:date
+          }));
+        }
 
+     });
+
+    }
+
+      //function to call fetch data for a date in a particular format
+      function getDataForThisDate(date){
+     
+        if(node==2){
+          let stringDate = String(date),
+              yr = +stringDate.substring(0,4),
+              m = +stringDate.substring(4,6),
+              d = +stringDate.substring(6); 
+
+          let formattedDate = new Date(yr,m-1,d);
+
+          let dateDisplay = d3.select("#currentDate").text(formattedDate.toDateString());
+          
+          d3.select("#dateDetails").text('Date | '+formattedDate.toDateString());
+        }
+
+        //getting data for a date by passing in actual query string for get request to server
+        getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=RAW");
       }
 
       //selecting a date to fetch data from the server and show only this for the time being and
       //starting the continuous flow again if the user resets selection
       selectFlow = function(date = null,clear = false,pause=false,resume=false){
+       
         if(date){
-          clearInterval(timeID);
-          dataDate= +date;
-          continuousFlowFunction();
-        }else if(clear){
-          timeID = setInterval(continuousFlowFunction, 2000);
-        }else if(pause){
+          getDataForThisDate(date);
+        }
+        // else if(clear){
+        //   timeID = setInterval(continuousFlowFunction, 2000);
+        // }
+        else if(pause){
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
           let checkerCanvas =  document.createElement('canvas');
-              checkerCanvas.width = viewBoxWidth,
+              checkerCanvas.width = viewBoxWidth;
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
-            requestID = requestAnimationFrame(animate); //resuming the animation
+            requestID = requestAnimationFrame(draw); //resuming the animation
           }
           
         }
@@ -444,43 +533,76 @@ section#inputSection{
           currentStateImages, // current image to draw in the canvas based on user input
           windFlowIDS, //list to hold all the stream line flow ids for a particular date
           lastSelected, //holding the flows for latest interaction station
-          totalPathData; //list to hold all the stream line flow  line data for a particular date
+          totalPathData,//list to hold all the stream line flow  line data for a particular date
+          newLineOffset=0;// how much of the coordinates the lines and canvas need to me moved in new panned view
+          //taking care of zoom behaviour
+    
+    var zoom = d3.zoom().scaleExtent([1,1]).on('end',function(){
+      panner();
+    });
+    
+    // topSvg.call(zoom);
+    //event listener functino that takes care of panning correctly based on user interaction
+    panner  = function(serverInput = null){
+        console.log(serverInput);
+
+        if(!serverInput){
+            let dragDimension=d3.event.transform.x;
+            console.log("dragged is ",d3.event.transform);
+            sendEvent(JSON.stringify({drag:dragDimension}));
+        }else{
+
+          if("yaw" in serverInput){
+               let intialX = projection([0,0])[0];
+            
+                projection.rotate([serverInput["yaw"],0,0]);
+
+                let xMoved = (projection([0,0])[0])-intialX; //actual x coordinates the canvas have to be moved to overlay it properly
+                newLineOffset+=xMoved; //calculating total shifting of the coordinates done since the beggining
+                //redrawing new map based on new panning interaction
+                g.selectAll("path").attr("d",path.projection(projection));
+                
+                document.getElementById("canvasDemo").style.left = newLineOffset+"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
+             
+                //redrawing stations based on new panning 
+                topSvg.selectAll("image").attr("x", function(d, i) {
+                      let x = projection([d.lon, d.lat])[0];
+                      return isFinite(x) ? x- 50: null;
+                    })
+                    .attr("y", function(d, i) {
+                      let y = projection([d.lon, d.lat])[1];
+                      return isFinite(y) ? y -50 : null;
+                    });
+
+                //redrawing new lines based on new panning
+                topSvg.selectAll('line').attr("x1", function(d,i){
+                  return d.x0 + newLineOffset;
+                }).attr("x2", function(d,i){
+                  return d.x1 + newLineOffset;
+                });
+
+                topSvg.node().__zoom.x = serverInput['drag'];
+                console.log(topSvg.node().__zoom);
+              }else{
+                topSvg.node().__zoom.x = serverInput['drag'];
+                console.log(topSvg.node().__zoom);
+              }
+
+        }
+
+    }
 
 
       function getStreamFLowData(query) {
 
-        d3.csv("http://10.29.3.2:8085/data.csv"+query, function(error, response) {
+        d3.csv("http://10.29.2.27:8085/data"+query, function(error, response) {
 
+            // dataDate++;
           if(node==2){
-
-          let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
-          let stringDate = String(dataDate),
-              yr = +stringDate.substring(0,4),
-              m = +stringDate.substring(4,6),
-              d = +stringDate.substring(6); 
-
-          let date = new Date(yr,m-1,d);
-          let dateDisplay = d3.select("#currentDate").text(date.toDateString());
-          
-          d3.selectAll("#dateDetails").text('Date | '+date.toDateString());
-    
-          for(let i=0;i<dropDown.length;i++){
-            if(dropDown[i].value==dataDate){
-              dateAlreadyPresent=true;
-              break;
-            }
-          }
-
-    
-          if(!dateAlreadyPresent){
-            dropDown.appendChild(new Option(dataDate,dataDate,false));
-          }
-
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
-        }
-
-            dataDate++;
+                d3.select('#hoverLine').remove();
+          }
 
             cancelAnimationFrame(requestID); //stopping the old animation
             lastSelected = []; //clearing the last selected from previous date data
@@ -489,7 +611,9 @@ section#inputSection{
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
             d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new data comes in
 
-
+            topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
+            topSvg.node().style.animationPlayState = 'running'; //reruning the blinking effect for topSvg container    
+                   
             totalPathData = [];
             windFlowIDS = [];
             
@@ -518,6 +642,7 @@ section#inputSection{
                 }));
             return;
           }
+          
           var upperBound = d3.max(data, function(item) {
               return item["values"].length;
             }),
@@ -527,7 +652,8 @@ section#inputSection{
           for (var i = 0; i < data.length; i++) {
 
             var wind_flow_data = data[i]["values"], //values of the wind flow
-              station_id = data[i]["key"], //value of the key for that station to station wind flow
+                firstElement = wind_flow_data[0], //using first object reference to use for getting few info
+                station_id =  firstElement["Source"]+"_to_"+firstElement["Destination"],
               streamLineData = {
                 id: station_id,
                 active: 0,
@@ -537,29 +663,37 @@ section#inputSection{
             windFlowIDS.push(station_id); //adding stations id so that they can be used later on for interaction and animation
 
             var stations = [];
-            //putting the source station and destination statino data to show them as circles
-            stations.push({
-              name: wind_flow_data[0]["Source"],
-              lat: +wind_flow_data[0]["S_Lat"],
-              lon: +wind_flow_data[0]["S_Lon"]
-            });
-            stations.push({
-              name: wind_flow_data[0]["Destination"],
-              lat: +wind_flow_data[0]["D_Lat"],
-              lon: +wind_flow_data[0]["D_Lon"]
-            })
+           //putting the source station and destination statino data to show them as circles
+            if(d3.select("#"+firstElement['Source']).node()==undefined){
+              stations.push({
+                name: firstElement["Source"],
+                lat: +firstElement["S_Lat"],
+                lon: +firstElement["S_Lon"]
+              });
+            }
+
+
+            if(d3.select("#"+firstElement['Destination']).node()==undefined){
+              stations.push({
+                name: firstElement["Destination"],
+                lat: +firstElement["D_Lat"],
+                lon: +firstElement["D_Lon"]
+              });
+            }
 
             //adding stations as image and adding on click event for those stations
-            var st_locations = g.selectAll("image." + station_id).data(stations).enter().append("image").attr("class", station_id)
+            var st_locations = topSvg.selectAll("image." + station_id).data(stations,function(d){return d;}).enter().append("image").attr("class", station_id)
               .attr("id", function(d, i) {
                 return d.name;
               }).attr("active", 0)
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr("x", function(d, i) {
-                return projection([d.lon, d.lat])[0] - 10;
+                let x = projection([d.lon, d.lat])[0];
+                return isFinite(x) ? x -10 : null; 
               })
               .attr("y", function(d, i) {
-                return projection([d.lon, d.lat])[1];
+                let y = projection([d.lon, d.lat])[1];
+                return isFinite(y) ? y- 10 :null; 
               })
               .attr("width", 20)
               .attr("height", 20);
@@ -568,50 +702,89 @@ section#inputSection{
 
               let xy= d3.mouse(this),
                   elem = d3.select(this);
-  //to do event listener with pausing and resume
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(!elem.node().parentNode.classList.toggle('blinkers')){
+                      //pausing blinking when mouse over a station
+                          elem.node().parentNode.style.animationPlayState = 'paused';
+                      }
+                  }
+
+
+              //to do event listener with pausing and resume
                let currentState = elem.attr("active");
                if(currentState==1){
 
-                if(!topSvg.selectAll("text.stationName").size()){
-                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+                if(!topSvg.selectAll("g."+d.name).size()){
+                    //creating white background when displaying text for station info
+                  let numOfCharacters = d.name.length,
+                      textContainer = topSvg.append('g').attr('class','stationName '+d.name).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      
+                      textContainer.append('rect').attr('width',function(){
+                          return (numOfCharacters*22) +"px";
+                      }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                      textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d.name);
 
                 if(pause){
-                  let container = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+50)+")");
-                container.append('rect').attr('class','paOrRe').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',()=>{
-                      //asking to resume animation 
-                      sendEvent('resume');
-                    });
+                  let container = topSvg.append('g').attr('class','tempButtons '+d.name).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+
+                      container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
+                            //asking to resume animation 
+                            sendEvent('resume');
+                          });
                 }else{
-                  let nextContainer = svg.append('g').attr('class','tempButtons').attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+50)+")");
-                nextContainer.append('rect').attr('class','paOrRe').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
-                nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',()=>{
-                    //asking to pause the whole current animation
-                    sendEvent('pause');
-                });
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d.name).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+
+                      nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
+                          //asking to pause the whole current animation
+                          sendEvent('pause');
+                      });
                   }
                 }
 
                 }else{
-                  topSvg.append("text").attr('class','stationName').style("z-index", 3).attr("dy", "1em").attr("transform", "translate(" +xy+ ")").text(d.name);
+
+                  if(!topSvg.selectAll("g."+d.name).size()){
+                      //creating white background when displaying text for station info
+                      let numOfCharacters = d.name.length,
+                          textContainer = topSvg.append('g').attr('class','stationName '+d.name).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                          
+                          textContainer.append('rect').attr('width',function(){
+                              return (numOfCharacters*22) +"px";
+                          }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                          textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d.name);
+                  }
+                }
+              }).on("mouseout", function(d, i) {
+              let elem = d3.select(this),
+                  currentState = elem.attr("active");
+
+                  if(elem.node().parentNode.classList.contains('initialFlow')){
+                      //checking if the flow is in initial state or interaction state
+                      if(!elem.node().parentNode.classList.contains('blinkers')){
+                        //resuming blinking effect after mouse out
+                        elem.node().parentNode.classList.add('blinkers');
+                        elem.node().parentNode.style.animationPlayState = 'running';
+                      }   
+                  }
+
+                     
+                if(currentState==1){
+
+                  setTimeout(function(){
+                    topSvg.selectAll("g."+d.name).remove();   
+                  },2500);
+                }else{
+                  topSvg.selectAll("g."+d.name).remove();
                 }
 
-            }).on("mouseleave", function(d, i) {
-              let currentState = d3.select(this).attr("active");
-
-              if(currentState==1){
-                      setTimeout(()=>{
-                        svg.selectAll("g.tempButtons").remove();
-                        topSvg.selectAll("text.stationName").remove();   
-                      },2000);
-              }else{
-                topSvg.selectAll("text.stationName").remove();
-              }
-
-            }).on("click", function() {
-
-                  svg.selectAll("g.tempButtons").remove();
-                  topSvg.selectAll("text.stationName").remove(); 
+              }).on("click", function() {
+                  topSvg.selectAll("g.tempButtons").remove();
+                  topSvg.selectAll("g.stationName").remove(); 
 
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
@@ -663,10 +836,10 @@ section#inputSection{
                     var obj = {
                       x0: startPoint[0],
                       y0: startPoint[1],
-                      // x1: endPoint[0],
-                      // y1: endPoint[1],
+                      x1: endPoint[0],
+                      y1: endPoint[1],
                       // line:path,
-                      // v:velocity,
+                      v:velocity,
                       interpolator: pathInterpolator,
                       beforeAngle: beforeAngle,
                       afterAngle: afterAngle,
@@ -675,25 +848,6 @@ section#inputSection{
                     //,color:strokeColor};
 
                     streamLineData.value.push(obj); //adding each line data into one container for one flow
-
-                    //appends line as DOM objects so that they can be used to give velocity on hover over
-                    g.append("line").attr("x1", startPoint[0]).attr("y1", startPoint[1]).attr("x2", endPoint[0]).attr("y2", endPoint[1])
-                      .attr("class", station_id)
-                      .attr("active", 0)
-                      .attr('velocity', velocity)
-                      .style("stroke-width", 2)
-                      .style("stroke", "white")
-                      .style("opacity", 0)
-                      .on("mouseover", function(d, i) {
-                        var e = d3.select(this);
-                        if ((e.attr("active")) == 1) {
-                          topSvg.append("text").attr("class", "velocity").attr("transform", "translate(" + d3.mouse(this) + ")").attr("dy", "2em")
-                            .text(e.attr("velocity") + "m/s");
-                        }
-                      }).on("mouseout", function() {
-                        topSvg.selectAll("text").remove();
-                      });
-
                   }
                 }
               
@@ -713,20 +867,25 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
-            totalSelection = [],
-            holder = 1;
+            totalSelection = [];
 
           if(node==2){
-            if(document.getElementsByClassName('infoElements').length==4){
+
+            if(document.getElementsByClassName('infoElements').length==3){
                 let elem = d3.select('#viewInfo');
-                elem.append('li').attr('id','hoverStation').attr('class','infoElements').style('z-index',3).text('Hover over the stations to pause or resume the flow');
-                elem.append('li').attr('id','resetStation').attr('class','infoElements').style('z-index',3).text('Click the active station to remove flow from that station');
+                elem.append('li').attr('id','hoverStation').attr('class','infoElements').text('Hover over the stations to pause or resume the flow');
+                elem.append('li').attr('id','resetStation').attr('class','infoElements').text('Click the active station to remove flow from that station');
+                elem.append('li').attr('id','hoverLine').attr('class','infoElements').text('Hover over any visible line to get velocity info for that wind instance');
               }
           }
 
           if (windFlowIDS.length == 0) {
             return;
           }
+
+          //removing both the class name after interaction mode is entered
+          topSvg.node().classList.remove('blinkers','initialFlow');
+          topSvg.node().style.animationPlayState = 'paused';
          
           //getting all the stream line class where this station is a source of wind
           for (var i = 0; i < windFlowIDS.length; i++) {
@@ -740,10 +899,49 @@ section#inputSection{
             var index = totalSelection[j],
               streamLineID = windFlowIDS[index];
             totalPathData[index].active = newOpacity;
-            g.selectAll("line." + streamLineID).attr("active", newOpacity);
+            
+            if(newOpacity){
+
+             let allLines = totalPathData[index].value; //collection of lines for one flow
+
+                //appends line as DOM objects so that they can be used to give velocity on hover over
+                topSvg.selectAll("line."+streamLineID).data(allLines,function(d){return d;}).enter().append('line').attr('class',streamLineID)
+                .attr("x1", function(d,i){
+                  return d.x0 + newLineOffset;
+                }).attr("y1", function(d,i){
+                  return d.y0;
+                }).attr("x2", function(d,i){
+                  return d.x1 + newLineOffset;
+                }).attr("y2", function(d,i){
+                  return d.y1;
+                }).style("stroke-width", 1)
+                  .style("stroke", "black")
+                  .style('opacity',0)
+                  .on("mouseover", function(d, i) {
+                        let xy = d3.mouse(this),
+                            info = (+d.v).toFixed(2)+"m/s",
+                            numOfCharacters = info.length,
+                            lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
+
+                            lineContainer.append('rect').attr('width',function(){
+                                return (numOfCharacters*21) +"px";
+                            }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+
+                            lineContainer.append('text').attr("class","velocity").attr('dx','0.5em').attr('dy','1.2em').text(info);
+
+                    }).on("mouseout", function() {
+                      topSvg.selectAll("g."+streamLineID).remove();
+                    });
+
+          }else{
+            topSvg.selectAll("line." + streamLineID).remove();
+          }  
 
           }
-          g.selectAll("image#" + subString).attr("active", newOpacity);
+
+          topSvg.selectAll("image#" + subString).attr("active", newOpacity);
+
+          console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
           if(totalSelection.length==0){
             lastSelected=[];
@@ -762,12 +960,17 @@ section#inputSection{
 
             setTimeout(function(){
               if(reset==true){
-                
               if(node==2){
-                console.log("got inside");
+      
                 d3.select('#hoverStation').remove();
                 d3.select('#resetStation').remove();
+                d3.select('#hoverLine').remove();
               }
+
+              // d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
+              topSvg.node().style.animationPlayState = 'running';
+
               cancelAnimationFrame(requestID);
               currentStateImages=allFrames;
               requestID=requestAnimationFrame(animate);
@@ -793,24 +996,24 @@ section#inputSection{
 
         console.log(document.getElementsByTagName('*').length);
 
-        //this function animates the streamline by moving the curves with arrow heads on it
-        function animate() {
-          frame++;
-          if (frame > 30) {
-            frame = 1;
-          }
+          //this function animates the streamline by moving the curves with arrow heads on it
+          function animate() {
+            frame++;
+            if (frame > 30) {
+              frame = 1;
+            }
+            
+            if (allFrames[frame] == undefined) {
+              var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
+                offScreenContext = offScreenCanvas.getContext('2d');
+                offScreenCanvas.width = viewBoxWidth;// match the off-screen canvas dimensions with that the main drawing Canvas
+                offScreenCanvas.height = viewBoxHeight;
 
-          if (allFrames[frame] == undefined) {
-            var offScreenCanvas = document.createElement("canvas"), // creates a new off-screen canvas element
-              offScreenContext = offScreenCanvas.getContext('2d');
-            offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
-            offScreenCanvas.height = viewBoxHeight;
-
-            var linePath = new Path2D(), //this one for drawing lines
+          var linePath = new Path2D(), //this one for drawing lines
               arrowPath = new Path2D(); //this path for drawing arrow head
 
             var t = (frame * 33.33) / 1000;
-            canvas.clearRect(0, 0, width, height);
+            canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
             //drawing the lines
             for (var i = 0; i < totalPathData.length; i++) {
               var flow = totalPathData[i];
@@ -854,25 +1057,27 @@ section#inputSection{
             offScreenContext.stroke(arrowPath)
             offScreenContext.fillStyle = "#F0FFFF";
             offScreenContext.fill(arrowPath);
+ 
 
             // createArrows(offScreenContext,arrowPath); //this function creates arrow heads on the top of the animating lines
-            allFrames[frame] = offScreenCanvas; //stroing original frames for later use
+            allFrames[frame] = offScreenCanvas; //storing original frames for later use
             currentStateImages[frame] = offScreenCanvas;
 
             if (frame == 30) {
-                sendEvent(JSON.stringify(
-                {
-                  click:true
-                }));
-            } //allowing to interact with data after all 60 frames has been created 
-          } else {
-            canvas.clearRect(0, 0, width, height);
-            canvas.drawImage(currentStateImages[frame], 0, 0);
+              sendEvent(JSON.stringify(
+              {
+                click:true
+              }));
+            } //allowing to interact with data after all 60 frames has been 
+            } else {
+              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
+              canvas.drawImage(currentStateImages[frame], 0, 0);
+            }
+
+            requestID = requestAnimationFrame(animate); //calling another animation frame to draw
+
           }
-
-          requestID = requestAnimationFrame(animate); //calling another animation frame to draw
-
-        }
+          
 
         //creates new frames in the animation based on the user input
         function reCreateImages() {
@@ -898,9 +1103,9 @@ section#inputSection{
             for (var i = 0; i < totalPathData.length; i++) {
 
               if (totalPathData[i]['active'] == 1) {
-                var temp = totalPathData[i].value,
-                  clearCanvas=false,
-                  isLast = lastSelected.includes(i);
+                var temp = totalPathData[i].value,                
+                    clearCanvas=false,
+                    isLast = lastSelected.includes(i);
 
                 for (var j = 0; j < temp.length; j++) {
                   var obj = temp[j],
@@ -963,7 +1168,7 @@ section#inputSection{
 
             tempImages[f + 1] = offScreenCanvas;
             f++;
-
+            //just in case interaction doesnot contain any data clear canvas and show nothing
           }
 
           if(clearCanvas==false){
@@ -972,6 +1177,7 @@ section#inputSection{
                 reset:false
               }));
           }
+
 
           currentStateImages = tempImages;
           tempImages = undefined;
@@ -1113,36 +1319,48 @@ section#inputSection{
 
   }
 
-  clipDimensions = window.location.search.substring(1).split(",");
-  //checking until the url contains display dimension
-  while(clipDimensions==undefined){
-    clipDimensions = window.location.search.substring(1).split(",");
+  // function that intializes the node number for a browser and display dimensions before starting rendering graphics on the screen
+  function intializeGraphics(){
+
+      (function(){
+          if(clipDimensions[0]==0 && clipDimensions[1]==0){
+            node = 1;
+          }else if (clipDimensions[0]==3840 && clipDimensions[1]==0){
+            node = 2;
+          }else if (clipDimensions[0]==7680 && clipDimensions[1]==0){
+            node = 3;
+          }else if (clipDimensions[0]==0 && clipDimensions[1]==2160){
+            node = 4;
+          }else if(clipDimensions[0]==3840 && clipDimensions[1]==2160){
+            node = 5;
+          }else if (clipDimensions[0]==7680 && clipDimensions[1]==2160){
+            node = 6;
+          }else if (clipDimensions[0]==0 && clipDimensions[1]==4320){
+            node = 7;
+          }else if(clipDimensions[0]==3840 && clipDimensions[1]==4320){
+            node = 8;
+          }else if(clipDimensions[0]==7680 && clipDimensions[1]==4320){
+            node = 9;
+          }
+        })()
+  
+        createGraphics();
+
   }
 
-
-  (function(){
-    if(clipDimensions[0]==0 && clipDimensions[1]==0){
-      node = 1;
-    }else if (clipDimensions[0]==3840 && clipDimensions[1]==0){
-      node = 2;
-    }else if (clipDimensions[0]==7680 && clipDimensions[1]==0){
-      node = 3;
-    }else if (clipDimensions[0]==0 && clipDimensions[1]==2160){
-      node = 4;
-    }else if(clipDimensions[0]==3840 && clipDimensions[1]==2160){
-      node = 5;
-    }else if (clipDimensions[0]==7680 && clipDimensions[1]==2160){
-      node = 6;
-    }else if (clipDimensions[0]==0 && clipDimensions[1]==4320){
-      node = 7;
-    }else if(clipDimensions[0]==3840 && clipDimensions[1]==4320){
-      node = 8;
-    }else if(clipDimensions[0]==7680 && clipDimensions[1]==4320){
-      node = 9;
-    }
-  })();
+  clipDimensions = window.location.search.substring(1).split(",");
   
-  createGraphics();
+  //checking until the url contains display dimension
+  if(clipDimensions.length==1){
+
+    setTimeout(function()
+        clipDimensions = window.location.search.substring(1).split(",");
+        intializeGraphics();
+    },20)
+  
+  }else{
+        intializeGraphics();
+  }
     </script>
   </body>
   </html>

@@ -276,7 +276,7 @@ section#inputSection{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -421,7 +421,7 @@ section#inputSection{
 
       //function that runs simulation automatically changing data in regular intervals
       var continuousDataCheckFunction = function() {
-        d3.request("http://10.29.3.2:8085/").post(JSON.stringify({
+        d3.request("http://10.29.2.27:8085/").post(JSON.stringify({
           op:"CHECK",
           date: dataDate,
           type: "AGG"
@@ -505,7 +505,7 @@ section#inputSection{
         }
 
         //getting data for a date by passing in actual query string for get request to server
-        getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=BITMAP");
+        getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=AGG");
       }
 
       //selecting a date to fetch data from the server and show only this for the time being and
@@ -522,7 +522,7 @@ section#inputSection{
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
           let checkerCanvas =  document.createElement('canvas');
-              checkerCanvas.width = overScannedCanvasWidth,
+              checkerCanvas.width = viewBoxWidth;
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
             requestID = requestAnimationFrame(draw); //resuming the animation
@@ -602,7 +602,7 @@ section#inputSection{
 
       function getStreamFLowData(query) {
 
-        d3.json("http://10.29.2.27:8085/data.json"+query, function(error, response) {
+        d3.json("http://10.29.2.27:8085/data"+query, function(error, response) {
 
           // dataDate++;
           if(node==2){

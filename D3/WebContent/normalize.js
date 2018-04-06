@@ -19,6 +19,21 @@ transform.prototype.convertToActualXY = function(x,y) {
 };
 
 
+transform.findGreaterDifferenceLatOrLon= function(a,b){
+	  //getting lat and lon values for both wind points
+	  var lat1 = Number(a["Wind_Lat"]),
+  	 	  lon1 = Number(a["Wind_Lon"]),
+          lat2 = Number(b["Wind_Lat"]),
+          lon2 = Number(b["Wind_Lon"]);
+
+      //getting both lon diff and lat diff between two wind instances
+      var lat_diff = lat1>=lat2 ? lat1-lat2: lat2-lat1,
+          lon_diff = lon1>=lon2 ? lon1-lon2 : lon2-lon1;
+       
+        return lat_diff>=lon_diff ? lat_diff : lon_diff;
+
+}
+
 //this function draws arrow heads on the top of the stream lines
 // function createArrows(offScreenContext,arrowPath) {
 

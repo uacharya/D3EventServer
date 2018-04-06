@@ -653,6 +653,7 @@ section#inputSection{
 
             var wind_flow_data = data[i]["values"], //values of the wind flow
                 firstElement = wind_flow_data[0], //using first object reference to use for getting few info
+                lastElement = wind_flow_data[wind_flow_data.length-1], //getting last object in flow to check each arrow max bound
                 station_id =  firstElement["Source"]+"_to_"+firstElement["Destination"],
               streamLineData = {
                 id: station_id,
@@ -799,12 +800,22 @@ section#inputSection{
 
 
             var arrow_size = arrowSize(wind_flow_data.length);
+            //getting aggreration number and coordiantes diff between wind instances
+            // var greaterDiff = transform.findGreaterDifferenceLatOrLon(firstElement,lastElement),
+            //     stepPerWindInstance = (greaterDiff/wind_flow_data.length)*3;
 
             wind_flow_data.forEach(function(d, i) {
               //checking if the data equals to the last line in wind flow and now creating the line as it will already be created
               if (i == wind_flow_data.length - 1) {
                 return;
               } 
+
+              var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>10;
+
+              if(vrd){
+                console.log("got inside of this"+station_id);
+                return;
+              }
                 var x0 = projection([+d["Wind_Lon"], +d["Wind_Lat"]]),
                 x1 = projection([+wind_flow_data[i + 1]["Wind_Lon"], +wind_flow_data[i + 1]["Wind_Lat"]]),
                 temp = tweenTheCurves(d, wind_flow_data[i + 1], x0, x1, minimumX, maximumX);
@@ -1353,7 +1364,7 @@ section#inputSection{
   //checking until the url contains display dimension
   if(clipDimensions.length==1){
 
-    setTimeout(function()
+    setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
     },20)

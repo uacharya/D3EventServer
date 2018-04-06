@@ -276,7 +276,7 @@ section#inputSection{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19370102;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -443,7 +443,7 @@ section#inputSection{
               }
 
               //starting first date flow without user input
-              if(dataDate==19720101){
+              if(dataDate==19370102){
                   sendEvent(JSON.stringify(
                             {fetch:dataDate})
                            );
@@ -548,7 +548,7 @@ section#inputSection{
       panner();
     });
     
-    topSvg.call(zoom);
+    // topSvg.call(zoom);
     //event listener functino that takes care of panning correctly based on user interaction
     panner  = function(serverInput = null){
         console.log(serverInput);
@@ -661,6 +661,7 @@ section#inputSection{
 
             var wind_flow_data = response[key], //values of the wind flow
                 firstElement = wind_flow_data[0], //using first object reference to use for getting few info
+                lastElement = wind_flow_data[wind_flow_data.length-1], //getting last object in flow to check each arrow max bound
                 station_id =  firstElement["Source"]+"_to_"+firstElement["Destination"],
                 streamLineData = {
                   id: station_id,
@@ -698,14 +699,14 @@ section#inputSection{
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr("x", function(d, i) {
                 let x = projection([d.lon, d.lat])[0];
-                return isFinite(x) ? x -10 : null; 
+                return isFinite(x) ? x -20 : null; 
               })
               .attr("y", function(d, i) {
                 let y = projection([d.lon, d.lat])[1];
-                return isFinite(y) ? y- 10 :null; 
+                return isFinite(y) ? y- 20 :null; 
               })
-              .attr("width", 20)
-              .attr("height", 20);
+              .attr("width", 40)
+              .attr("height", 40);
             //show station name in text in case mouse is hovered
             st_locations.on("mouseover", function(d, i) {
               let xy= d3.mouse(this),
@@ -806,6 +807,9 @@ section#inputSection{
               });
 
             var arrow_size = arrowSize(wind_flow_data.length);
+            //getting aggreration number and coordiantes diff between wind instances
+            // var greaterDiff = transform.findGreaterDifferenceLatOrLon(firstElement,lastElement),
+            //     stepPerWindInstance = (greaterDiff/wind_flow_data.length)*3;
 
 
             wind_flow_data.forEach(function(d, i) {
@@ -813,6 +817,15 @@ section#inputSection{
               if (i == wind_flow_data.length - 1) {
                 return;
               } 
+
+              var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>8;
+
+              if(vrd){
+                console.log("got inside of this"+station_id);
+                return;
+              }
+              
+
                 var x0 = projection([+d["Wind_Lon"], +d["Wind_Lat"]]),
                 x1 = projection([+wind_flow_data[i + 1]["Wind_Lon"], +wind_flow_data[i + 1]["Wind_Lat"]]),
                 temp = tweenTheCurves(d, wind_flow_data[i + 1], x0, x1, minimumX, maximumX);
@@ -1366,10 +1379,10 @@ section#inputSection{
   //checking until the url contains display dimension
   if(clipDimensions.length==1){
 
-    setTimeout(function()
+    setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },20)
+    },20);
   
   }else{
         intializeGraphics();

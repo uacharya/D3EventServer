@@ -92,9 +92,9 @@ image.blinkers{
   100%{z-index: 1;}
 }
 
-.blinkers{
+/*.blinkers{
    animation:blink 1s ease-in-out 0s infinite alternate;
-}
+}*/
 
 /**************************************************************/
 
@@ -276,7 +276,7 @@ section#inputSection{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19370102;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19340101;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -302,6 +302,7 @@ section#inputSection{
 
 
     var svg = d3.select("body").append("svg")
+      .attr('id', 'mapSVG')
       .attr("width", width)
       .attr("height", height)
       .attr("clip-path","url(#clipping)")
@@ -443,11 +444,11 @@ section#inputSection{
               }
 
               //starting first date flow without user input
-              if(dataDate==19370102){
-                  sendEvent(JSON.stringify(
-                            {fetch:dataDate})
-                           );
-              }
+              // if(dataDate==19370102){
+              //     sendEvent(JSON.stringify(
+              //               {fetch:dataDate})
+              //              );
+              // }
 
               if(response[1]!="done"){
                 dataDate = response[1];
@@ -613,6 +614,7 @@ section#inputSection{
 
 
             cancelAnimationFrame(requestID); //stopping the old animation
+            canvas.clearRect(0, 0,viewBoxWidth,viewBoxHeight); //clearing drawing canvas
             lastSelected = []; //clearing the last selected from previous date data
 
             d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
@@ -648,7 +650,7 @@ section#inputSection{
             return;
           }
 
-
+          var startParseTime = Date.now();
           //getting the upper bound of flow to bound arrow head basd on number of data points in the flow
           var upperBound = response['upper_bound'];
 
@@ -705,8 +707,8 @@ section#inputSection{
                 let y = projection([d.lon, d.lat])[1];
                 return isFinite(y) ? y- 20 :null; 
               })
-              .attr("width", 40)
-              .attr("height", 40);
+              .attr("width", 50)
+              .attr("height", 50);
             //show station name in text in case mouse is hovered
             st_locations.on("mouseover", function(d, i) {
               let xy= d3.mouse(this),
@@ -802,7 +804,8 @@ section#inputSection{
 
                   sendEvent(JSON.stringify({
                     s: subString,
-                    o: newOpacity
+                    o: newOpacity,
+                    t: Date.now()
                   }));
               });
 
@@ -878,6 +881,7 @@ section#inputSection{
             totalPathData.push(streamLineData); //adding each stream line flow between two stations to total flows
             }
 
+            console.log("the time taken for preprocessing data is"+(Date.now()-startParseTime)/1000)
             requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
 
           });
@@ -888,6 +892,7 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
+            initiatedTime = Number(data['t']),
             totalSelection = [];
 
 
@@ -1013,12 +1018,12 @@ section#inputSection{
           }else{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
             requestID = requestAnimationFrame(animate); //start the animation again
+
           } 
+
+          console.log("the time for event synch is "+ (Date.now()-initiatedTime)/1000);
  
         }
-
-
-          console.log(document.getElementsByTagName('*').length);
 
 
           //this function animates the streamline by moving the curves with arrow heads on it

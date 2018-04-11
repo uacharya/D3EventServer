@@ -92,9 +92,9 @@ image.blinkers{
   100%{z-index: 1;}
 }
 
-.blinkers{
+/*.blinkers{
    animation:blink 1s ease-in-out 0s infinite alternate;
-}
+}*/
 
 /**************************************************************/
 
@@ -103,8 +103,6 @@ svg#mapSVG{
   top: 0px;
   left: 0px;
   z-index: 0;
-  background-color: #1ca2ba;
-
 }
 
 canvas#canvasDemo {
@@ -274,7 +272,7 @@ section#inputSection{
     <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19340101;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -300,6 +298,7 @@ section#inputSection{
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
     var svg = d3.select("body").append("svg")
+        .attr('id', 'mapSVG')
         .attr("width", width)
         .attr("height", height)
         .attr("clip-path","url(#clipping)")
@@ -321,8 +320,8 @@ section#inputSection{
       .style("animation-play-state","running");
  
 
-    var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", overScannedCanvasWidth)
-      .attr("height", viewBoxHeight).style('left','-1280px').style('top','0px').node().getContext('2d');
+    var canvas = d3.select("body").append("canvas").attr("id", "canvasDemo").attr("width", viewBoxWidth)
+      .attr("height", viewBoxHeight).style('left','0px').style('top','0px').node().getContext('2d');
 
     var transformer = new transform(clipDimensions[0],clipDimensions[1]);
 
@@ -427,11 +426,11 @@ section#inputSection{
               }
 
               //starting first date flow without user input
-              if(dataDate==19720101){
-                  sendEvent(JSON.stringify(
-                            {fetch:dataDate})
-                           );
-              }
+              // if(dataDate==19720101){
+              //     sendEvent(JSON.stringify(
+              //               {fetch:dataDate})
+              //              );
+              // }
 
               if(response[1]!="done"){
                 dataDate = response[1];
@@ -506,7 +505,7 @@ section#inputSection{
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
           let checkerCanvas =  document.createElement('canvas');
-              checkerCanvas.width = overScannedCanvasWidth,
+              checkerCanvas.width = viewBoxWidth,
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
             requestID = requestAnimationFrame(draw); //resuming the animation
@@ -533,7 +532,7 @@ section#inputSection{
       panner();
     });
     
-    topSvg.call(zoom);
+    // topSvg.call(zoom);
     //event listener functino that takes care of panning correctly based on user interaction
     panner  = function(serverInput = null){
 
@@ -592,6 +591,8 @@ section#inputSection{
         }
 
         cancelAnimationFrame(requestID); //stopping the old animation
+        canvas.clearRect(0, 0,viewBoxWidth,viewBoxHeight); //clearing drawing canvas
+        
         lastSelected = []; //clearing the last selected from previous date data
         frameChecker=[]; //clearing old frame checker array
 
@@ -648,13 +649,13 @@ section#inputSection{
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr('x', function(d, i) {
                 let x  = projection([+d[2], +d[1]])[0];
-                return isFinite(x) ? x- 50: null;
+                return isFinite(x) ? x- 20: null;
               }).attr('y', function(d, i) {
                 let y = projection([+d[2], +d[1]])[1];
-                return isFinite(y) ? y -50: null;
+                return isFinite(y) ? y -20: null;
               })
               // .style("animation-play-state","running")
-              .attr("width", 80).attr("height", 80)
+              .attr("width", 50).attr("height", 50)
               .on('mouseover', function(d, i) {
 
               let xy= d3.mouse(this),
@@ -777,6 +778,7 @@ section#inputSection{
                   return;
                 }
                 var binaryResponse = xhr.response;
+                url = [];
 
                 // console.log("the returned data is"+binaryResponse);
 
@@ -785,9 +787,7 @@ section#inputSection{
                   return;
                 }
 
-                url = [];
-
-
+              
                 var index = 0,
                   dataBuffer = new DataView(binaryResponse);
                
@@ -932,7 +932,7 @@ section#inputSection{
 
               }else{
               cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
-              canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
+              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
               }
               
             },500);
@@ -962,13 +962,13 @@ section#inputSection{
                               //rendering canvas is faster than rendering image object again and again in chrome
                               let offScreenCanvas = document.createElement('canvas'),
                               offScreenContext = offScreenCanvas.getContext('2d');
-                              offScreenCanvas.width = overScannedCanvasWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
+                              offScreenCanvas.width = viewBoxWidth // match the off-screen canvas dimensions with that the main drawing Canvas
                               offScreenCanvas.height = viewBoxHeight;
 
-                              offScreenContext.drawImage(this,0,0,overScannedCanvasWidth,viewBoxHeight);
+                              offScreenContext.drawImage(this,0,0);
 
-                              canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
-                              canvas.drawImage(this, 0, 0,overScannedCanvasWidth, viewBoxHeight);
+                              canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
+                              canvas.drawImage(this, 0, 0);
                               originalImages[f] = offScreenCanvas;
                               currentStateImages[f] = offScreenCanvas;
                               //sending allow click notification after  last frame is loaded in memory
@@ -987,8 +987,8 @@ section#inputSection{
                         frameChecker.push(frame);
                     }
                   } else {
-                    canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
-                    canvas.drawImage(currentStateImages[frame], 0, 0,overScannedCanvasWidth, viewBoxHeight);
+                    canvas.clearRect(0, 0, viewBoxWidth, viewBoxHeight);
+                    canvas.drawImage(currentStateImages[frame], 0, 0);
 
                   }
                   frame++;
@@ -1009,7 +1009,7 @@ section#inputSection{
                   while (f < 30) {
                     var offScreenCanvas = document.createElement('canvas'),
                         offScreenContext = offScreenCanvas.getContext('2d');
-                        offScreenCanvas.width = overScannedCanvasWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
+                        offScreenCanvas.width = viewBoxWidth; // match the off-screen canvas dimensions with that the main drawing Canvas
                         offScreenCanvas.height = viewBoxHeight;
 
                     var linePath = new Path2D(), //this one for drawing lines
@@ -1048,8 +1048,8 @@ section#inputSection{
                             var start = transformer.convertToActualXY(+obj[0], +obj[1]),
                                 end = transformer.convertToActualXY(x2, y2);
 
-                            linePath.moveTo(start[0]+1280, start[1]);
-                            linePath.lineTo(end[0]+1280, end[1]);
+                            linePath.moveTo(start[0]+0, start[1]);
+                            linePath.lineTo(end[0]+0, end[1]);
 
                             var leftX = Math.ceil(x2 + Math.cos(beforeAngle) * hypo),
                               leftY = Math.ceil(y2 + Math.sin(beforeAngle) * hypo),
@@ -1060,15 +1060,15 @@ section#inputSection{
                                 right = transformer.convertToActualXY(rightX, rightY);
 
                             if (isLast) {
-                              latestArrowPath.moveTo(end[0]+1280, end[1]);
-                              latestArrowPath.lineTo(left[0]+1280, left[1]);
-                              latestArrowPath.lineTo(right[0]+1280, right[1]);
-                              latestArrowPath.lineTo(end[0]+1280, end[1]);
+                              latestArrowPath.moveTo(end[0]+0, end[1]);
+                              latestArrowPath.lineTo(left[0]+0, left[1]);
+                              latestArrowPath.lineTo(right[0]+0, right[1]);
+                              latestArrowPath.lineTo(end[0]+0, end[1]);
                             } else {
-                              arrowPath.moveTo(end[0]+1280, end[1]);
-                              arrowPath.lineTo(left[0]+1280, left[1]);
-                              arrowPath.lineTo(right[0]+1280, right[1]);
-                              arrowPath.lineTo(end[0]+1280, end[1]);
+                              arrowPath.moveTo(end[0]+0, end[1]);
+                              arrowPath.lineTo(left[0]+0, left[1]);
+                              arrowPath.lineTo(right[0]+0, right[1]);
+                              arrowPath.lineTo(end[0]+0, end[1]);
                             }
 
                             obj.push(pathInterpolator);
@@ -1084,8 +1084,8 @@ section#inputSection{
                             var start = transformer.convertToActualXY(+obj[0], +obj[1]),
                                 end = transformer.convertToActualXY(x2, y2);
 
-                            linePath.moveTo(start[0]+1280, start[1]);
-                            linePath.lineTo(end[0]+1280, end[1]);
+                            linePath.moveTo(start[0]+0, start[1]);
+                            linePath.lineTo(end[0]+0, end[1]);
 
                             var leftX = Math.ceil(x2 + Math.cos(obj[6]) * obj[8]),
                               leftY = Math.ceil(y2 + Math.sin(obj[6]) * obj[8]),
@@ -1096,15 +1096,15 @@ section#inputSection{
                                 right = transformer.convertToActualXY(rightX, rightY);
 
                             if (isLast) {
-                              latestArrowPath.moveTo(end[0]+1280, end[1]);
-                              latestArrowPath.lineTo(left[0]+1280, left[1]);
-                              latestArrowPath.lineTo(right[0]+1280, right[1]);
-                              latestArrowPath.lineTo(end[0]+1280, end[1]);
+                              latestArrowPath.moveTo(end[0]+0, end[1]);
+                              latestArrowPath.lineTo(left[0]+0, left[1]);
+                              latestArrowPath.lineTo(right[0]+0, right[1]);
+                              latestArrowPath.lineTo(end[0]+0, end[1]);
                             } else {
-                              arrowPath.moveTo(end[0]+1280, end[1]);
-                              arrowPath.lineTo(left[0]+1280, left[1]);
-                              arrowPath.lineTo(right[0]+1280, right[1]);
-                              arrowPath.lineTo(end[0]+1280, end[1]);
+                              arrowPath.moveTo(end[0]+0, end[1]);
+                              arrowPath.lineTo(left[0]+0, left[1]);
+                              arrowPath.lineTo(right[0]+0, right[1]);
+                              arrowPath.lineTo(end[0]+0, end[1]);
                             }
 
                           }

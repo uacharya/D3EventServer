@@ -605,6 +605,7 @@ section#inputSection{
           }
 
             cancelAnimationFrame(requestID); //stopping the old animation
+            canvas.clearRect(0, 0,viewBoxWidth,viewBoxHeight); //clearing drawing canvas
             lastSelected = []; //clearing the last selected from previous date data
 
             d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
@@ -628,6 +629,8 @@ section#inputSection{
             frame = 0; //frame counter total equals 60
             allFrames = {}; //variable to cache original images for animation
             currentStateImages = {}; // current image to draw in the canvas based on user input
+
+            var startParseTime = Date.now();
 
           //converts the csv data into data arranged into groups based on their ID'ss
           var data = d3.nest().key(function(d) {
@@ -794,7 +797,8 @@ section#inputSection{
 
                   sendEvent(JSON.stringify({
                     s: subString,
-                    o: newOpacity
+                    o: newOpacity,
+                    t: Date.now()
                   }));
               });
 
@@ -810,7 +814,7 @@ section#inputSection{
                 return;
               } 
 
-              var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>10;
+              var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>8;
 
               if(vrd){
                 console.log("got inside of this"+station_id);
@@ -867,7 +871,8 @@ section#inputSection{
             totalPathData.push(streamLineData); //adding each stream line flow between two stations to total flows
 
           }
-
+          
+          console.log("the time taken for preprocessing data is"+(Date.now()-startParseTime)/1000)
           requestID = requestAnimationFrame(animate); //starting the animation by requesting frame and passing in the callback
 
           });
@@ -878,6 +883,7 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
+            initiatedTime = Number(data['t']),
             totalSelection = [];
 
           if(node==2){
@@ -1002,6 +1008,8 @@ section#inputSection{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
             requestID = requestAnimationFrame(animate); //start the animation again
           } 
+
+          console.log("the time for event synch is "+ (Date.now()-initiatedTime)/1000);
 
         }
 

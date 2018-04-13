@@ -9,12 +9,12 @@
   <style>
   text.stationName ,text.velocity{
   text-anchor: start;
-  font: 30px Verdana;
+  font: 20px Verdana;
 /*  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;*/
 }
 
 text.paOrRe{
-  font: 25px Verdana;
+  font: 15px Verdana;
 }
 
 
@@ -47,9 +47,9 @@ image.blinkers{
   100%{z-index: 1;}
 }
 
-.blinkers{
+/*.blinkers{
    animation:blink 1s ease-in-out 0s infinite alternate;
-}
+}*/
 
 /**************************************************************/
 
@@ -438,7 +438,7 @@ section#inputSection{
 
 	    topSvg.call(zoom);
 
-
+      //this function is used to take care of panning interaction in the browser
 	    function panner(){
 	      if(allowClick==true){
 	        let dragDimension=d3.event.transform.x;
@@ -509,6 +509,10 @@ section#inputSection{
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
             d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new data comes in
 
+            //removing all the hover over stations info
+            topSvg.selectAll("g.tempButtons").remove();
+            topSvg.selectAll("g.stationName").remove(); 
+
             topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
         	  topSvg.node().style.animationPlayState = 'running'; //reruning the blinking effect for topSvg container
 
@@ -571,27 +575,27 @@ section#inputSection{
                 if(!topSvg.selectAll("g."+d[0]).size()){
                     //creating white background when displaying text for station info
                   let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+xy[1]+")");
                       
                       textContainer.append('rect').attr('width',function(){
-                          return (numOfCharacters*22) +"px";
-                      }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+                          return (numOfCharacters*15) +"px";
+                      }).attr('height','35px').attr('rx','10px').attr('ry','10px').attr('fill','#808080');
 
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+40)+")");
 
-                      container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      container.append('rect').attr('width','80px').attr('height','30px').attr('rx','10px').attr('ry','10px').attr('fill','red');
                       container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
                             //asking to resume animation 
                             pause=false;
                             requestID = requestAnimationFrame(draw); //resuming the animation
                           });
                 }else{
-                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+40)+")");
 
-                      nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      nextContainer.append('rect').attr('width','60px').attr('height','30px').attr('rx','10px').attr('ry','10px').attr('fill','red');
                       nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
                           //asking to pause the whole current animation
                           pause=true;
@@ -606,11 +610,11 @@ section#inputSection{
                   if(!topSvg.selectAll("g."+d[0]).size()){
                       //creating white background when displaying text for station info
                       let numOfCharacters = d[0].length,
-                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+xy[1]+")");
                           
                           textContainer.append('rect').attr('width',function(){
-                              return (numOfCharacters*22) +"px";
-                          }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+                              return (numOfCharacters*15) +"px";
+                          }).attr('height','35px').attr('rx','10px').attr('ry','10px').attr('fill','#808080');
 
                           textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
                   }
@@ -642,7 +646,7 @@ section#inputSection{
 
               	if (windFlowIDS.length == 0) {
            				return;
-          		}
+          		  }
 
                 if(allowClick==true){
 
@@ -653,15 +657,21 @@ section#inputSection{
 	                elem.append('li').attr('id','hoverLine').attr('class','infoElements').text('Hover over any visible line to get velocity info for that wind instance');
 	              }
 
+                  //removing all the hover over stations info
+                  topSvg.selectAll("g.tempButtons").remove();
+                  topSvg.selectAll("g.stationName").remove(); 
+
+                  //removing both the class name after interaction mode is entered
+                  topSvg.node().classList.remove('blinkers','initialFlow');
+                  topSvg.node().style.animationPlayState = 'paused';
+
+
                   var selectedElement = d3.select(this),
                     isActive = selectedElement.attr("active"),
                     newOpacity = (isActive == 1) ? 0 : 1,
                     subString = selectedElement.attr("id"),
                     totalSelection = [];
 
-              //removing both the class name after interaction mode is entered
-		          topSvg.node().classList.remove('blinkers','initialFlow');
-		          topSvg.node().style.animationPlayState = 'paused';
 
                   //getting all the stream line class where this station is a source of wind
                   for (var i = 0; i < windFlowIDS.length; i++) {
@@ -671,7 +681,7 @@ section#inputSection{
                     }
                   }
                 
-                //contiuning the pause state if new station is clicked
+                //contiuning the flow state if new station is clicked
                 pause=false
                 
                 for (var j = 0; j < totalSelection.length; j++) {
@@ -700,11 +710,11 @@ section#inputSection{
 		                        let xy = d3.mouse(this),
 		                            info = (+d[4]).toFixed(2)+"m/s",
 		                            numOfCharacters = info.length,
-		                            lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
+		                            lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+(xy[1]+30)+")");
 
 		                            lineContainer.append('rect').attr('width',function(){
-		                                return (numOfCharacters*21) +"px";
-		                            }).attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','#808080');
+		                                return (numOfCharacters*15) +"px";
+		                            }).attr('height','35px').attr('rx','10px').attr('ry','10px').attr('fill','#808080');
 
 		                            lineContainer.append('text').attr("class","velocity").attr('dx','0.5em').attr('dy','1.2em').text(info);
 
@@ -726,6 +736,8 @@ section#inputSection{
                	  
                   if(newOpacity==1){
                     lastSelected=totalSelection;
+                  }else{
+                    lastSelected=[];
                   }
 
                   reCreateImages(); //creating new images for animation
@@ -852,6 +864,7 @@ section#inputSection{
                   }
                   
                   var f = 0,
+                      clearCanvas=true,
                     tempImages = {};
 
                   while (f < 30) {
@@ -873,6 +886,7 @@ section#inputSection{
                       if (pathData[i]['active'] == 1) {
                         var temp = pathData[i][windFlowIDS[i]],
                           h = pathData[i]['h'],isLast = lastSelected.includes(i);
+                          clearCanvas=false; //flag to indicate if the flow should be reset to original state
 
 
                         for (var j = 0; j < temp.length; j++) {
@@ -965,6 +979,13 @@ section#inputSection{
                     f++;
 
                   }
+
+                  //resuming blinking if the canvas has to be set to original state
+                  if(clearCanvas){
+                      topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
+                      topSvg.node().style.animationPlayState = 'running'; //reruning the blinking
+                  }
+
 
                   currentStateImages = tempImages;
                   tempImages = undefined;

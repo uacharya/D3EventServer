@@ -601,6 +601,10 @@ section#inputSection{
         d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
         d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new datacomes in
 
+        //removing all the hover over stations info
+        topSvg.selectAll("g.tempButtons").remove();
+        topSvg.selectAll("g.stationName").remove(); 
+
         topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
         topSvg.node().style.animationPlayState = 'running'; //reruning the blinking effect for topSvg container
 
@@ -1024,8 +1028,8 @@ section#inputSection{
                     for (var i = 0; i < pathData.length; i++) {
                       if (pathData[i]['active'] == 1) {
                         var temp = pathData[i][windFlowIDS[i]],
-                          clearCanvas=false,
                           h = pathData[i]['h'],isLast = lastSelected.includes(i);
+                          clearCanvas=false;
 
 
                         for (var j = 0; j < temp.length; j++) {

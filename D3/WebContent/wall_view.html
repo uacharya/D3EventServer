@@ -91,9 +91,9 @@ image.blinkers{
   100%{z-index: 1;}
 }
 
-.blinkers{
+/*.blinkers{
    animation:blink 1s ease-in-out 0s infinite alternate;
-}
+}*/
 
 /**************************************************************/
 
@@ -272,7 +272,7 @@ section#inputSection{
      <script type="text/javascript" src="./normalize.js"></script>
     <script>
     "use strict";
-    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19720101;
+    var clipDimensions,node,selectFlow,reset=false,pause=false,dataDate = 19340101;
     //calling this function later after window location string has been set according to required format
     var createGraphics = function(){
 
@@ -297,6 +297,7 @@ section#inputSection{
     var parameters = ""+clipDimensions[0]+" "+clipDimensions[1]+" "+width+" "+height;
 
     var svg = d3.select("body").append("svg")
+      .attr('id', 'mapSVG')
       .attr("width", width)
       .attr("height", height)
       .attr("clip-path","url(#clipping)")
@@ -436,11 +437,11 @@ section#inputSection{
               }
 
               //starting first date flow without user input
-              if(dataDate==19720101){
-                  sendEvent(JSON.stringify(
-                            {fetch:dataDate})
-                           );
-              }
+              // if(dataDate==19720101){
+              //     sendEvent(JSON.stringify(
+              //               {fetch:dataDate})
+              //              );
+              // }
 
               if(response[1]!="done"){
                 dataDate = response[1];
@@ -454,8 +455,6 @@ section#inputSection{
 
       var timeID = setInterval(continuousDataCheckFunction,4000);
   
-  
-      
       //adding user input field to document flow for getting user selected date for a flow
       d3.selectAll('.userInput').style('display','inline-block');
       
@@ -518,7 +517,7 @@ section#inputSection{
               checkerCanvas.width = viewBoxWidth;
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
-            requestID = requestAnimationFrame(draw); //resuming the animation
+            requestID = requestAnimationFrame(animate); //resuming the animation
           }
           
         }
@@ -693,14 +692,14 @@ section#inputSection{
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr("x", function(d, i) {
                 let x = projection([d.lon, d.lat])[0];
-                return isFinite(x) ? x -10 : null; 
+                return isFinite(x) ? x -20 : null; 
               })
               .attr("y", function(d, i) {
                 let y = projection([d.lon, d.lat])[1];
-                return isFinite(y) ? y- 10 :null; 
+                return isFinite(y) ? y- 20 :null; 
               })
-              .attr("width", 20)
-              .attr("height", 20);
+              .attr("width", 50)
+              .attr("height", 50);
             //show station name in text in case mouse is hovered
             st_locations.on("mouseover", function(d, i) {
 
@@ -817,7 +816,6 @@ section#inputSection{
               var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>8;
 
               if(vrd){
-                console.log("got inside of this"+station_id);
                 return;
               }
                 var x0 = projection([+d["Wind_Lon"], +d["Wind_Lat"]]),
@@ -958,8 +956,6 @@ section#inputSection{
 
           topSvg.selectAll("image#" + subString).attr("active", newOpacity);
 
-          console.log("the lines now are" + d3.selectAll('line').nodes().length);
-
           if(totalSelection.length==0){
             lastSelected=[];
           }else{
@@ -1013,7 +1009,6 @@ section#inputSection{
 
         }
 
-        console.log(document.getElementsByTagName('*').length);
 
           //this function animates the streamline by moving the curves with arrow heads on it
           function animate() {
@@ -1123,8 +1118,8 @@ section#inputSection{
 
               if (totalPathData[i]['active'] == 1) {
                 var temp = totalPathData[i].value,                
-                    clearCanvas=false,
                     isLast = lastSelected.includes(i);
+                    clearCanvas=false;
 
                 for (var j = 0; j < temp.length; j++) {
                   var obj = temp[j],
@@ -1375,7 +1370,7 @@ section#inputSection{
     setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },20)
+    },100)
   
   }else{
         intializeGraphics();

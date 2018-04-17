@@ -353,7 +353,7 @@ section#inputSection{
       var dimension = mercatorBounds(projection, maxlat),
         minimumX = dimension[0][0],
         maximumX = dimension[1][0];
-    console.log("the required data for server is ",minimumX,maximumX);
+ 
 
     //load and display the World
     d3.json("http://10.29.2.27:8085/world-map?op=OPEN", function(error, topology) {
@@ -501,6 +501,9 @@ section#inputSection{
           let formattedDate = new Date(yr,m-1,d);
 
           let dateDisplay = d3.select("#currentDate").text(formattedDate.toDateString());
+
+          console.log("collecting states for "+date);
+
           
           d3.select("#dateDetails").text('Date | '+formattedDate.toDateString());
         }
@@ -526,7 +529,7 @@ section#inputSection{
               checkerCanvas.width = viewBoxWidth;
               checkerCanvas.height=viewBoxHeight;
           if(checkerCanvas.toDataURL()!==(document.getElementById('canvasDemo').toDataURL())){
-            requestID = requestAnimationFrame(draw); //resuming the animation
+            requestID = requestAnimationFrame(animate); //resuming the animation
           }
           
         }
@@ -649,6 +652,7 @@ section#inputSection{
     
             return;
           }
+
 
           var startParseTime = Date.now();
           //getting the upper bound of flow to bound arrow head basd on number of data points in the flow
@@ -824,7 +828,6 @@ section#inputSection{
               var vrd = Math.abs(Number(d['Wind_Lon'])-Number(wind_flow_data[i + 1]["Wind_Lon"]))>8;
 
               if(vrd){
-                console.log("got inside of this"+station_id);
                 return;
               }
               
@@ -966,8 +969,6 @@ section#inputSection{
 
           }
           topSvg.selectAll("image#" + subString).attr("active", newOpacity);
-
-          console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
           if(totalSelection.length==0){
             lastSelected=[];
@@ -1133,8 +1134,8 @@ section#inputSection{
 
               if (totalPathData[i]['active'] == 1) {
                 var temp = totalPathData[i].value,                
-                    clearCanvas=false,
                     isLast = lastSelected.includes(i);
+                    clearCanvas=false;
 
                 for (var j = 0; j < temp.length; j++) {
                   var obj = temp[j],
@@ -1387,7 +1388,7 @@ section#inputSection{
     setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },20);
+    },100);
   
   }else{
         intializeGraphics();

@@ -640,7 +640,7 @@ section#inputSection{
     
             return;
             }
-
+            var startParseTime = Date.now();
             pathData = response['path'];
             var stationData = response['stations'];
            
@@ -755,7 +755,8 @@ section#inputSection{
 
                   sendEvent(JSON.stringify({
                     s: subString,
-                    o: newOpacity
+                    o: newOpacity,
+                    t: Date.now()
                   }));
               });
 
@@ -770,6 +771,8 @@ section#inputSection{
                   pathData[i].active = 0;
 
                 }
+                
+            console.log("the time taken for preprocessing data is"+(Date.now()-startParseTime)/1000)
 
             });
 
@@ -791,7 +794,7 @@ section#inputSection{
                   return;
                 }
 
-              
+                // var sTI = Date.now();
                 var index = 0,
                   dataBuffer = new DataView(binaryResponse);
                
@@ -807,6 +810,8 @@ section#inputSection{
                   url.push(window.URL.createObjectURL(b));
                 }
 
+                // console.log("the time taken to read pngs is "+((Date.now()-sTI)/1000));
+
                 dataBuffer = undefined; //pointing the buffer to undefined to free original buffer data
 
                 requestID = requestAnimationFrame(draw);
@@ -818,6 +823,7 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
+            initiatedTime = Number(data['t']),
             totalSelection = [];
 
           if(node==2){
@@ -891,7 +897,6 @@ section#inputSection{
             
           }
 
-          console.log("the lines now are" + d3.selectAll('line').nodes().length);
 
           topSvg.selectAll("image#" + subString).attr("active", newOpacity);
 
@@ -945,6 +950,8 @@ section#inputSection{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines
             requestID = requestAnimationFrame(draw); //start the animation again
           } 
+
+          console.log("the time for event synch is "+ (Date.now()-initiatedTime)/1000);
 
         }
 
@@ -1196,7 +1203,7 @@ section#inputSection{
     setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },20)
+    },100)
   
   }else{
         intializeGraphics();

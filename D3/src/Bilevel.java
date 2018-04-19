@@ -83,6 +83,14 @@ public class Bilevel {
 					: true;
 			System.out.println(this.allowClick);
 		} else if (message.contains("drag")) {
+			synchronized (allInstances) {
+				for (Bilevel e : allInstances) {
+					if (e.getAllowInteraction() == false) {
+						return;
+					}
+				}
+			}
+				
 			// caling functin that handles the panning event
 			handlePanning(Double.parseDouble(message.substring(message.indexOf(":") + 1, message.length() - 1)));
 		} else if (message.contains("fetch")) {

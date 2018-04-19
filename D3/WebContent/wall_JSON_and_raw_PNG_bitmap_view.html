@@ -24,9 +24,9 @@
               reset=true;
           }
         }
-        // else if(dimension.data=='clearInputField'){
-        //     selectFlow(null,true);
-        // }
+        else if(dimension.data=='clearInputField'){
+            selectFlow(null,true);
+        }
         else if(dimension.data.includes('fetch')){
           let temp = JSON.parse(dimension.data)
           selectFlow(temp['fetch']);
@@ -264,7 +264,7 @@ section#inputSection{
     <span class='hintText'>Click to fetch this date data</span>
   </div>
   <div class="glyphicon glyphicon-remove userInput" id="clearDateTextField">
-    <span class='hintText'>Click to clear date selection</span>
+    <span class='hintText'>Click to reset the wind flow</span>
   </div>
 </section>
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
@@ -450,11 +450,11 @@ section#inputSection{
       d3.selectAll('.userInput').style('display','inline-block');
       
       d3.select('#clearDateTextField').on('click',function(){
-        let elem = document.getElementById('dateSelector');
-        if(elem.selectedIndex){
-            document.getElementById('dateSelector').selectedIndex=0;
-            // sendEvent('clearInputField');
-          }
+        // let elem = document.getElementById('dateSelector');
+        // if(elem.selectedIndex){
+        //     document.getElementById('dateSelector').selectedIndex=0;
+            sendEvent('clearInputField');
+         // }
       });
 
      d3.select('#fetchDateData').on('click',function(){
@@ -491,6 +491,40 @@ section#inputSection{
         getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=BITMAP");
       }
 
+      function resetTheWindFlow(){
+
+            if(node==2){
+                d3.select('#hoverStation').remove();
+                d3.select('#resetStation').remove();
+                d3.select('#hoverLine').remove();
+              }
+
+              //removing all the hover over stations info
+              topSvg.selectAll("g.tempButtons").remove();
+              topSvg.selectAll("g.stationName").remove(); 
+              topSvg.selectAll("g.vc").remove(); 
+
+              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
+              topSvg.node().style.animationPlayState = 'running';
+
+              cancelAnimationFrame(requestID);
+              currentStateImages=originalImages;
+              requestID=requestAnimationFrame(draw);
+              
+              sendEvent(JSON.stringify(
+              {
+                reset:false
+              }));
+              //resetting image state to initial state
+              topSvg.selectAll("image").attr("active", 0);
+
+              for (var i = 0; i < pathData.length; i++) {
+                  pathData[i].active = 0;
+              }
+
+      }
+
       //selecting a date to fetch data from the server and show only this for the time being and
       //starting the continuous flow again if the user resets selection
       selectFlow = function(date = null,clear = false,pause=false,resume=false){
@@ -498,9 +532,10 @@ section#inputSection{
         if(date){
           getDataForThisDate(date);
         }
-        // else if(clear){
-        //   timeID = setInterval(continuousFlowFunction, 2000);
-        // }
+        else if(clear){
+          // timeID = setInterval(continuousFlowFunction, 2000);
+          resetTheWindFlow();
+        }
         else if(pause){
           cancelAnimationFrame(requestID);//pausing the animation
         }else if(resume){
@@ -603,6 +638,7 @@ section#inputSection{
         //removing all the hover over stations info
         topSvg.selectAll("g.tempButtons").remove();
         topSvg.selectAll("g.stationName").remove(); 
+        topSvg.selectAll("g.vc").remove(); 
 
         topSvg.node().classList.add('initialFlow','blinkers'); //reseting the class attribute of top svg for each new data flow
         topSvg.node().style.animationPlayState = 'running'; //reruning the blinking effect for topSvg container
@@ -816,7 +852,7 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
-            initiatedTime = Number(data['t']),
+            // initiatedTime = Number(data['t']),
             totalSelection = [];
 
           if(node==2){
@@ -832,6 +868,11 @@ section#inputSection{
           if (windFlowIDS.length == 0) {
             return;
           }
+
+          //removing all the hover over stations info
+          topSvg.selectAll("g.tempButtons").remove();
+          topSvg.selectAll("g.stationName").remove(); 
+          topSvg.selectAll("g.vc").remove(); 
 
           //removing both the class name after interaction mode is entered
           topSvg.node().classList.remove('blinkers','initialFlow');
@@ -863,7 +904,7 @@ section#inputSection{
                     return d[2] + newLineOffset;
                   }).attr("y2", function(d,i){
                     return d[3];
-                  }).style("stroke-width", 3)
+                  }).style("stroke-width", 1)
                     .style("stroke", "black")
                     .style('opacity',0)
                     .on("mouseover", function(d, i) {
@@ -871,7 +912,7 @@ section#inputSection{
                         let xy = d3.mouse(this),
                             info = (+d[4]).toFixed(2)+"m/s",
                             numOfCharacters = info.length,
-                            lineContainer = topSvg.append('g').attr("class", streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
+                            lineContainer = topSvg.append('g').attr("class","vc "+ streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
 
                             lineContainer.append('rect').attr('width',function(){
                                 return (numOfCharacters*21) +"px";
@@ -918,7 +959,7 @@ section#inputSection{
                 d3.select('#hoverLine').remove();
               }
 
-              // d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
               topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
               topSvg.node().style.animationPlayState = 'running';
 
@@ -937,7 +978,7 @@ section#inputSection{
               canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
               }
               
-            },500);
+            },1000);
            
           }else{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines

@@ -412,8 +412,9 @@ section#inputSection{
        let viewList= viewDetail.append('ul').attr('id','viewInfo');
        //adding all the info about interaction as list elements where one info per line
        viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | ');
+       viewList.append('li').attr('id','stationInfo').attr('class','infoElements').text('Hover over any station icon to get the station name');
        viewList.append('li').attr('id','clickInfo').attr('class','infoElements').text('Click any station to start flow from that station');
-       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date');
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date after selecting it from the list');
        // viewList.append('li').attr('id','resetInfo').attr('class','infoElements').text('Use X button to reset date selection');
      }
 
@@ -901,7 +902,7 @@ section#inputSection{
 
           if(node==2){
 
-            if(document.getElementsByClassName('infoElements').length==3){
+            if(document.getElementsByClassName('infoElements').length==4){
                 let elem = d3.select('#viewInfo');
                 elem.append('li').attr('id','hoverStation').attr('class','infoElements').text('Hover over the stations to pause or resume the flow');
                 elem.append('li').attr('id','resetStation').attr('class','infoElements').text('Click the active station to remove flow from that station');

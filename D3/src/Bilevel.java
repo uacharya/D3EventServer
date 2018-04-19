@@ -86,6 +86,7 @@ public class Bilevel {
 			// caling functin that handles the panning event
 			handlePanning(Double.parseDouble(message.substring(message.indexOf(":") + 1, message.length() - 1)));
 		} else if (message.contains("fetch")) {
+			System.out.println("got inside fetch"+message);
 			// sending fetch instruction after node 2 makes sure that the data
 			// for that date is available
 			sendMessageToAll(message);// sending events to all

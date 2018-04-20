@@ -145,7 +145,7 @@ section#inputSection{
   padding-left: 100px;
 }
 
-.glyphicon-remove:hover,.glyphicon-play-circle:hover{
+.glyphicon-refresh:hover,.glyphicon-play-circle:hover{
   cursor: pointer;
 }
 
@@ -156,7 +156,7 @@ section#inputSection{
   font-size:80px;
 }
 
-.glyphicon-remove{
+.glyphicon-refresh{
   position:absolute;
   top:50px;
   left:870px;
@@ -179,7 +179,7 @@ section#inputSection{
   transition: opacity 1s;
 }
 
-.glyphicon-remove:hover > .hintText,.glyphicon-play-circle:hover > .hintText{
+.glyphicon-refresh:hover > .hintText,.glyphicon-play-circle:hover > .hintText{
   opacity: 1;
   visibility: visible;
 
@@ -263,7 +263,7 @@ section#inputSection{
   <div class="glyphicon glyphicon-play-circle userInput" id="fetchDateData">
     <span class='hintText'>Click to fetch this date data</span>
   </div>
-  <div class="glyphicon glyphicon-remove userInput" id="clearDateTextField">
+  <div class="glyphicon glyphicon-refresh userInput" id="clearDateTextField">
     <span class='hintText'>Click to reset the wind flow</span>
   </div>
 </section>
@@ -490,7 +490,7 @@ section#inputSection{
         //getting data for a date by passing in actual query string for get request to server
         getStreamFLowData("?op=OPEN&node="+node+"&date="+date+"&type=BITMAP");
       }
-
+      //function to reset the wind flow and put back in its original state
       function resetTheWindFlow(){
 
             if(node==2){
@@ -507,11 +507,12 @@ section#inputSection{
               d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
               topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
               topSvg.node().style.animationPlayState = 'running';
+              pause=false;
 
               cancelAnimationFrame(requestID);
               currentStateImages=originalImages;
               requestID=requestAnimationFrame(draw);
-              
+
               sendEvent(JSON.stringify(
               {
                 reset:false
@@ -578,6 +579,11 @@ section#inputSection{
         }else{
 
           if("yaw" in serverInput){
+              //removing all the hover over stations info
+              topSvg.selectAll("g.tempButtons").remove();
+              topSvg.selectAll("g.stationName").remove(); 
+              topSvg.selectAll("g.vc").remove(); 
+
                let intialX = projection([0,0])[0];
             
                 projection.rotate([serverInput["yaw"],0,0]);
@@ -605,10 +611,10 @@ section#inputSection{
                 });
 
                 topSvg.node().__zoom.x = serverInput['drag'];
-                console.log(topSvg.node().__zoom);
+                // console.log(topSvg.node().__zoom);
               }else{
                 topSvg.node().__zoom.x = serverInput['drag'];
-                console.log(topSvg.node().__zoom);
+                // console.log(topSvg.node().__zoom);
               }
 
         }
@@ -790,8 +796,7 @@ section#inputSection{
 
                   sendEvent(JSON.stringify({
                     s: subString,
-                    o: newOpacity,
-                    t: Date.now()
+                    o: newOpacity
                   }));
               });
 
@@ -852,7 +857,6 @@ section#inputSection{
         recieveEventData = function(data) {
           var newOpacity = +data['o'],
             subString = data['s'],
-            // initiatedTime = Number(data['t']),
             totalSelection = [];
 
           if(node==2){
@@ -904,7 +908,7 @@ section#inputSection{
                     return d[2] + newLineOffset;
                   }).attr("y2", function(d,i){
                     return d[3];
-                  }).style("stroke-width", 1)
+                  }).style("stroke-width", 2)
                     .style("stroke", "black")
                     .style('opacity',0)
                     .on("mouseover", function(d, i) {
@@ -978,7 +982,7 @@ section#inputSection{
               canvas.clearRect(0, 0, overScannedCanvasWidth, viewBoxHeight);
               }
               
-            },1000);
+            },1500);
            
           }else{
             cancelAnimationFrame(requestID);//stopping the old animation to remove some stream lines

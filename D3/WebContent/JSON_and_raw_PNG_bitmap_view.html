@@ -101,7 +101,7 @@ section#inputSection{
   padding-left: 50px;
 }
 
-.glyphicon-remove:hover,.glyphicon-play-circle:hover{
+.glyphicon-refresh:hover,.glyphicon-play-circle:hover{
   cursor: pointer;
 }
 
@@ -112,7 +112,7 @@ section#inputSection{
   font-size:40px;
 }
 
-.glyphicon-remove{
+.glyphicon-refresh{
   position:absolute;
   top:40px;
   left:530px;
@@ -136,7 +136,7 @@ section#inputSection{
   transition: opacity 1s;
 }
 
-.glyphicon-remove:hover > .hintText,.glyphicon-play-circle:hover > .hintText{
+.glyphicon-refresh:hover > .hintText,.glyphicon-play-circle:hover > .hintText{
   opacity: 1;
   visibility: visible;
 
@@ -219,8 +219,8 @@ section#inputSection{
   <div class="glyphicon glyphicon-play-circle userInput" id="fetchDateData">
     <span class='hintText'>Click to fetch this date data</span>
   </div>
-  <div class="glyphicon glyphicon-remove userInput" id="clearDateTextField">
-    <span class='hintText'>Click to reset the wind flow<</span>
+  <div class="glyphicon glyphicon-refresh userInput" id="clearDateTextField">
+    <span class='hintText'>Click to reset the wind flow</span>
   </div>
 </section>
     <script type="text/javascript" src="https://d3js.org/d3.v4.js"></script>
@@ -383,10 +383,11 @@ section#inputSection{
      //adding user input field to document flow for getting user selected date for a flow
       
       d3.select('#clearDateTextField').on('click',function(){
-        let elem = document.getElementById('dateSelector');
-        if(elem.selectedIndex){
-            document.getElementById('dateSelector').selectedIndex=0;
-          }
+        // let elem = document.getElementById('dateSelector');
+        // if(elem.selectedIndex){
+        //     document.getElementById('dateSelector').selectedIndex=0;
+        //   }
+        resetTheWindFlow();
       });
 
      d3.select('#fetchDateData').on('click',function(){
@@ -397,6 +398,35 @@ section#inputSection{
         }
 
      });
+     //function to reset the wind flow and put back in its original state
+     function resetTheWindFlow(){
+
+              d3.select('#hoverStation').remove();
+              d3.select('#resetStation').remove();
+              d3.select('#hoverLine').remove();
+
+              //removing all the hover over stations info
+              topSvg.selectAll("g.tempButtons").remove();
+              topSvg.selectAll("g.stationName").remove(); 
+              topSvg.selectAll("g.vc").remove(); 
+
+              d3.selectAll('line').remove(); // removing all lines appended for hover over after reseting the view
+              topSvg.node().classList.add('blinkers','initialFlow'); //reseting to original stations blinking mode
+              topSvg.node().style.animationPlayState = 'running';
+              pause=false;
+
+              cancelAnimationFrame(requestID);
+              currentStateImages=originalImages;
+              requestID=requestAnimationFrame(draw);
+              
+              //resetting image state to initial state
+              topSvg.selectAll("image").attr("active", 0);
+
+              for (var i = 0; i < pathData.length; i++) {
+                  pathData[i].active = 0;
+              }
+
+     }
 
     //function to call fetch data for a date in a particular format
      function getDataForThisDate(date){
@@ -451,6 +481,11 @@ section#inputSection{
                 newYaw = yaw+(360*(dx/width));
 
             if(newYaw<40 && newYaw >-40){
+              //removing all the hover over stations info
+              topSvg.selectAll("g.tempButtons").remove();
+              topSvg.selectAll("g.stationName").remove(); 
+              topSvg.selectAll("g.vc").remove(); 
+              
               projection.rotate([newYaw,0,0]);
 
               let xMoved = (projection([0,0])[0])-intialX; //actual x coordinates the canvas have to be moved to overlay it properly
@@ -686,7 +721,7 @@ section#inputSection{
                   // console.log("number of line before this is"+d3.selectAll('line').nodes().length);
                 
                 //contiuning the flow state if new station is clicked
-                pause=false
+                pause=false;
                 
                 for (var j = 0; j < totalSelection.length; j++) {
                   var index = totalSelection[j],
@@ -706,7 +741,7 @@ section#inputSection{
                         return d[2] + newLineOffset;
                       }).attr("y2", function(d,i){
                         return d[3];
-                      }).style("stroke-width", 2)
+                      }).style("stroke-width", 1)
                         .style("stroke", "black")
                         .style('opacity',0)
                         .on("mouseover", function(d, i) {

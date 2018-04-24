@@ -329,10 +329,11 @@ section#inputSection{
 
        let viewList= viewDetail.append('ul').attr('id','viewInfo');
        //adding all the info about interaction as list elements where one info per line
-       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | ');
+       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | No date has been selected');
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date after selecting it from the list');
        viewList.append('li').attr('id','stationInfo').attr('class','infoElements').text('Hover over any station icon to get the station name');
        viewList.append('li').attr('id','clickInfo').attr('class','infoElements').text('Click any station to start flow from that station');
-       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date after selecting it from the list');
+       
        // viewList.append('li').attr('id','resetInfo').attr('class','infoElements').text('Use X button to reset date selection');
 
       var dataDate = 20100507;
@@ -348,6 +349,8 @@ section#inputSection{
           console.log(response);
           if (response[0] == "ready") {
 
+              if(dataDate!=20120206){
+
               let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
               //adding next available data for visualization to date selector select button
               for(let i=0;i<dropDown.length;i++){
@@ -360,6 +363,7 @@ section#inputSection{
               if(!dateAlreadyPresent){
                 dropDown.appendChild(new Option(dataDate,dataDate,false));
               }
+            }
 
               //starting first date flow without user input
               // if(dataDate==19720101){
@@ -501,7 +505,7 @@ section#inputSection{
             //redrawing stations based on new panning 
               topSvg.selectAll("image").attr('x', function(d, i) {
                 let x  = projection([+d[2], +d[1]])[0];
-                return isFinite(x) ? x- 10: null;
+                return isFinite(x) ? x- 20: null;
               }).attr('y', function(d, i) {
                 let y = projection([+d[2], +d[1]])[1];
                 return isFinite(y) ? y : null;
@@ -543,6 +547,7 @@ section#inputSection{
             d3.selectAll("image").remove(); //removing all the staitons previously appended to DOM
             d3.selectAll("line").remove(); //removing all the lines previously appended to DOM
             d3.selectAll("text").remove(); //removing text element just in case text are still on the screen after new data comes in
+
 
             //removing all the hover over stations info
             topSvg.selectAll("g.tempButtons").remove();
@@ -586,11 +591,11 @@ section#inputSection{
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr('x', function(d, i) {
                 let x  = projection([+d[2], +d[1]])[0];
-                return isFinite(x) ? x- 10: null;
+                return isFinite(x) ? x- 20: null;
               }).attr('y', function(d, i) {
                 let y = projection([+d[2], +d[1]])[1];
                 return isFinite(y) ? y : null;
-              }).attr("width", 20).attr("height", 20)
+              }).attr("width", 30).attr("height", 30)
               .on('mouseover', function(d, i) {
 
               let xy= d3.mouse(this),
@@ -611,7 +616,7 @@ section#inputSection{
                 if(!topSvg.selectAll("g."+d[0]).size()){
                     //creating white background when displaying text for station info
                   let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+xy[1]+")");
+                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+(xy[1]+30)+")");
                       
                       textContainer.append('rect').attr('width',function(){
                           return (numOfCharacters*15) +"px";
@@ -620,7 +625,7 @@ section#inputSection{
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+40)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+70)+")");
 
                       container.append('rect').attr('width','80px').attr('height','30px').attr('rx','10px').attr('ry','10px').attr('fill','red');
                       container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
@@ -629,7 +634,7 @@ section#inputSection{
                             requestID = requestAnimationFrame(draw); //resuming the animation
                           });
                 }else{
-                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+40)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-5)+","+(xy[1]+70)+")");
 
                       nextContainer.append('rect').attr('width','60px').attr('height','30px').attr('rx','10px').attr('ry','10px').attr('fill','red');
                       nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
@@ -646,7 +651,7 @@ section#inputSection{
                   if(!topSvg.selectAll("g."+d[0]).size()){
                       //creating white background when displaying text for station info
                       let numOfCharacters = d[0].length,
-                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+xy[1]+")");
+                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*5))+","+(xy[1]+30)+")");
                           
                           textContainer.append('rect').attr('width',function(){
                               return (numOfCharacters*15) +"px";
@@ -709,7 +714,6 @@ section#inputSection{
                     subString = selectedElement.attr("id"),
                     totalSelection = [];
 
-
                   //getting all the stream line class where this station is a source of wind
                   for (var i = 0; i < windFlowIDS.length; i++) {
                     var temp = windFlowIDS[i].substring(0, windFlowIDS[i].indexOf("to") - 1);
@@ -767,10 +771,13 @@ section#inputSection{
                   }
                  
                   }
-                  //waiting some time before updating the station's active state for synchining with mouseout event
-                  setTimeout(function(){
-                    topSvg.selectAll("image#" + subString).attr("active", newOpacity);
-                  },100);
+
+                  if(totalSelection.length!=0){
+                      //waiting some time before updating the station's active state for synching with mouseout event
+                      setTimeout(function(){
+                        topSvg.selectAll("image#" + subString).attr("active", newOpacity);
+                      },100);
+                  }
                   // console.log("number of line after this is"+d3.selectAll('line').nodes().length);
                   
                   if(newOpacity==1){
@@ -875,7 +882,9 @@ section#inputSection{
                           canvas.drawImage(this, 0, 0);
                           originalImages[f] = offScreenCanvas
                           currentStateImages[f] =offScreenCanvas
-                          if(f==29){ allowClick=true; } //allowing to interact with data after all 30 frames has been created 
+                          if(f==29){ 
+                            allowClick=true; 
+                          } //allowing to interact with data after all 30 frames has been created 
                           window.URL.revokeObjectURL(url[f]);
                         }
                       })(frame);

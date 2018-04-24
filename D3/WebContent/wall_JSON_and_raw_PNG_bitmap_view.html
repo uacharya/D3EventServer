@@ -392,10 +392,11 @@ section#inputSection{
 
        let viewList= viewDetail.append('ul').attr('id','viewInfo');
        //adding all the info about interaction as list elements where one info per line
-       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | ');
+       viewList.append('li').attr('id','dateDetails').attr('class','infoElements').text('Date | No date has been selected');
+       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date after selecting it from the list');
        viewList.append('li').attr('id','stationInfo').attr('class','infoElements').text('Hover over any station icon to get the station name');
        viewList.append('li').attr('id','clickInfo').attr('class','infoElements').text('Click any station to start flow from that station');
-       viewList.append('li').attr('id','fetchInfo').attr('class','infoElements').text('Use \u2758> button to fetch data for a date after selecting it from the list');
+
        // viewList.append('li').attr('id','resetInfo').attr('class','infoElements').text('Use X button to reset date selection');
      }
 
@@ -412,6 +413,8 @@ section#inputSection{
           let response = JSON.parse(data.responseText);
           if (response[0] == "ready") {
 
+              if(dataDate!=20120206){
+
               let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
               //adding next available data for visualization to date selector select button
               for(let i=0;i<dropDown.length;i++){
@@ -424,6 +427,7 @@ section#inputSection{
               if(!dateAlreadyPresent){
                 dropDown.appendChild(new Option(dataDate,dataDate,false));
               }
+            }
 
               //starting first date flow without user input
               // if(dataDate==19720101){
@@ -595,6 +599,13 @@ section#inputSection{
 
                 document.getElementById("canvasDemo").style.left = (-1280+ newLineOffset) +"px"; //assigning new left position for absolutely positioned canvas element so that the overlayed canvas falls in the correct location of panned svg
              
+                //redrawing new lines based on new panning
+                topSvg.selectAll('line').attr("x1", function(d,i){
+                  return d[0] + newLineOffset;
+                }).attr("x2", function(d,i){
+                  return d[2] + newLineOffset;
+                });
+
                 //redrawing stations based on new panning 
                 topSvg.selectAll("image").attr('x', function(d, i) {
                 let x  = projection([+d[2], +d[1]])[0];
@@ -603,12 +614,6 @@ section#inputSection{
                 let y = projection([+d[2], +d[1]])[1];
                 return isFinite(y) ? y -20: null;
               });
-                //redrawing new lines based on new panning
-                topSvg.selectAll('line').attr("x1", function(d,i){
-                  return d[0] + newLineOffset;
-                }).attr("x2", function(d,i){
-                  return d[2] + newLineOffset;
-                });
 
                 topSvg.node().__zoom.x = serverInput['drag'];
                 // console.log(topSvg.node().__zoom);
@@ -700,7 +705,7 @@ section#inputSection{
                 return isFinite(y) ? y -20: null;
               })
               // .style("animation-play-state","running")
-              .attr("width", 60).attr("height", 60)
+              .attr("width", 70).attr("height", 70)
               .on('mouseover', function(d, i) {
 
               let xy= d3.mouse(this),
@@ -721,7 +726,7 @@ section#inputSection{
                 if(!topSvg.selectAll("g."+d[0]).size()){
                     //creating white background when displaying text for station info
                   let numOfCharacters = d[0].length,
-                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                      textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]-160)+")");
                       
                       textContainer.append('rect').attr('width',function(){
                           return (numOfCharacters*22) +"px";
@@ -730,17 +735,19 @@ section#inputSection{
                       textContainer.append("text").attr('class','stationName').attr('dx','0.6em').attr('fill','black').attr("dy", "1.2em").text(d[0]);
 
                 if(pause){
-                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let container = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]-100)+")");
 
                       container.append('rect').attr('width','130px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+
                       container.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Resume").on('click',function(){
                             //asking to resume animation 
                             sendEvent('resume');
                           });
                 }else{
-                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]+70)+")");
+                  let nextContainer = topSvg.append('g').attr('class','tempButtons '+d[0]).attr("transform", "translate("+(xy[0]-50)+","+(xy[1]-100)+")");
 
                       nextContainer.append('rect').attr('width','100px').attr('height','50px').attr('rx','15px').attr('ry','15px').attr('fill','red');
+                      
                       nextContainer.append('text').attr('class','paOrRe').attr('dx','0.6em').attr("dy", "1.3em").attr('fill','white').text("Pause").on('click',function(){
                           //asking to pause the whole current animation
                           sendEvent('pause');
@@ -753,7 +760,7 @@ section#inputSection{
                   if(!topSvg.selectAll("g."+d[0]).size()){
                       //creating white background when displaying text for station info
                       let numOfCharacters = d[0].length,
-                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+xy[1]+")");
+                          textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]-100)+")");
                           
                           textContainer.append('rect').attr('width',function(){
                               return (numOfCharacters*22) +"px";
@@ -780,7 +787,7 @@ section#inputSection{
 
                   setTimeout(function(){
                     topSvg.selectAll("g."+d[0]).remove();   
-                  },2500);
+                  },3000);
                 }else{
                   topSvg.selectAll("g."+d[0]).remove();
                 }
@@ -908,7 +915,7 @@ section#inputSection{
                     return d[2] + newLineOffset;
                   }).attr("y2", function(d,i){
                     return d[3];
-                  }).style("stroke-width", 2)
+                  }).style("stroke-width", 3)
                     .style("stroke", "black")
                     .style('opacity',0)
                     .on("mouseover", function(d, i) {
@@ -916,7 +923,7 @@ section#inputSection{
                         let xy = d3.mouse(this),
                             info = (+d[4]).toFixed(2)+"m/s",
                             numOfCharacters = info.length,
-                            lineContainer = topSvg.append('g').attr("class","vc "+ streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]+40)+")");
+                            lineContainer = topSvg.append('g').attr("class","vc "+ streamLineID).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]-80)+")");
 
                             lineContainer.append('rect').attr('width',function(){
                                 return (numOfCharacters*21) +"px";
@@ -936,11 +943,13 @@ section#inputSection{
           }
 
 
-          topSvg.selectAll("image#" + subString).attr("active", newOpacity);
+          
 
           if(totalSelection.length==0){
             lastSelected=[];
           }else{
+            topSvg.selectAll("image#" + subString).attr("active", newOpacity);
+            
             if(newOpacity==1){
               lastSelected = totalSelection;
             }else{
@@ -1241,7 +1250,7 @@ section#inputSection{
     setTimeout(function(){
         clipDimensions = window.location.search.substring(1).split(",");
         intializeGraphics();
-    },100)
+    },200)
   
   }else{
         intializeGraphics();

@@ -413,7 +413,7 @@ section#inputSection{
           let response = JSON.parse(data.responseText);
           if (response[0] == "ready") {
 
-              if(dataDate!=20120206){
+              // if(dataDate!=20120206){
 
               let dropDown = document.getElementById('dateSelector'), dateAlreadyPresent=false;
               //adding next available data for visualization to date selector select button
@@ -427,7 +427,7 @@ section#inputSection{
               if(!dateAlreadyPresent){
                 dropDown.appendChild(new Option(dataDate,dataDate,false));
               }
-            }
+            // }
 
               //starting first date flow without user input
               // if(dataDate==19720101){
@@ -571,13 +571,17 @@ section#inputSection{
     var zoom = d3.zoom().scaleExtent([1,1]).on('end',function(){
       panner();
     });
+
+    var panningStartTime;
     
     topSvg.call(zoom);
     //event listener functino that takes care of panning correctly based on user interaction
     panner  = function(serverInput = null){
 
         if(!serverInput){
+            panningStartTime = Date.now();
             let dragDimension=d3.event.transform.x;
+
             // console.log("dragged is ",d3.event.transform);
             sendEvent(JSON.stringify({drag:dragDimension}));
         }else{
@@ -617,6 +621,8 @@ section#inputSection{
 
                 topSvg.node().__zoom.x = serverInput['drag'];
                 // console.log(topSvg.node().__zoom);
+                console.log("the time taken for panning is"+(Date.now()-panningStartTime)/1000);
+
               }else{
                 topSvg.node().__zoom.x = serverInput['drag'];
                 // console.log(topSvg.node().__zoom);
@@ -695,6 +701,7 @@ section#inputSection{
                 return d[0];
               })
               .attr('active', 0)
+              .attr('timer','off')
               // .attr('class','blinkers')
               .attr("xlink:href", "\\\\WALL3\\WebContent\\station.png")
               .attr('x', function(d, i) {
@@ -722,9 +729,10 @@ section#inputSection{
               //to do event listener with pausing and resume
                let currentState = elem.attr("active");
                if(currentState==1){
+                elem.attr('timer','on');
 
                 if(!topSvg.selectAll("g."+d[0]).size()){
-                    //creating white background when displaying text for station info
+                  //creating white background when displaying text for station info
                   let numOfCharacters = d[0].length,
                       textContainer = topSvg.append('g').attr('class','stationName '+d[0]).attr("transform", "translate("+(xy[0]-(numOfCharacters*10))+","+(xy[1]-160)+")");
                       
@@ -753,6 +761,7 @@ section#inputSection{
                           sendEvent('pause');
                       });
                   }
+                  elem.attr('timer','off');
                 }
 
                 }else{
@@ -784,10 +793,11 @@ section#inputSection{
 
                      
                 if(currentState==1){
-
-                  setTimeout(function(){
-                    topSvg.selectAll("g."+d[0]).remove();   
-                  },3000);
+                  if(elem.attr('timer')=='off'){
+                      setTimeout(function(){
+                        topSvg.selectAll("g."+d[0]).remove();  
+                      },3000);
+                    }
                 }else{
                   topSvg.selectAll("g."+d[0]).remove();
                 }
@@ -915,7 +925,7 @@ section#inputSection{
                     return d[2] + newLineOffset;
                   }).attr("y2", function(d,i){
                     return d[3];
-                  }).style("stroke-width", 3)
+                  }).style("stroke-width", 2.5)
                     .style("stroke", "black")
                     .style('opacity',0)
                     .on("mouseover", function(d, i) {
@@ -1073,7 +1083,7 @@ section#inputSection{
                     var linePath = new Path2D(), //this one for drawing lines
                         latestArrowPath = new Path2D(), //this one for drawing blue arrow heads i.e. latest stations line
                         arrowPath = new Path2D(); //this path for drawing arrow head
-
+                    ///just making sure that the new wind instances are drawn on the right place
                     offScreenContext.drawImage(originalImages[f], 0, 0);
                     offScreenContext.globalCompositeOperation = 'source-in';
 

@@ -1126,7 +1126,7 @@ section#inputSection{
             var linePath = new Path2D(), //this one for drawing lines
               latestArrowPath = new Path2D(), //this one for drawing blue arrow heads i.e. latest stations line
               arrowPath = new Path2D(); //this path for drawing arrow head
-
+            ///just making sure that the new wind instances are drawn on the right place
             offScreenContext.drawImage(allFrames[f + 1], 0, 0);
             offScreenContext.globalCompositeOperation = 'source-in';
 
